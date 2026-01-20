@@ -1,17 +1,16 @@
-from typing import Dict, List, Optional
-from .dictionary import Dictionary
+from typing import Dict, List, Optional, Tuple
 from .entity import Entity
 from .association import Association
 from .link import Link
+from .attribute import Attribute
 
 
 class Project:
     """Container for an entire AnalyseSI project."""
 
-    VERSION = "1.0"
+    VERSION = "2.0"  # New version for entity-based attributes
 
     def __init__(self):
-        self.dictionary = Dictionary()
         self._entities: Dict[str, Entity] = {}
         self._associations: Dict[str, Association] = {}
         self._links: Dict[str, Link] = {}
@@ -119,12 +118,20 @@ class Project:
                 entities.append(entity)
         return entities
 
+    # Attribute overview (for dictionary view)
+    def get_all_attributes(self) -> List[Tuple[str, Attribute]]:
+        """Get all attributes across all entities as (entity_name, attribute) tuples."""
+        result = []
+        for entity in self._entities.values():
+            for attr in entity.attributes:
+                result.append((entity.name, attr))
+        return result
+
     # Serialization
     def to_dict(self) -> dict:
         """Convert project to dictionary for JSON serialization."""
         return {
             "version": self.VERSION,
-            "dictionary": self.dictionary.to_dict(),
             "mcd": {
                 "entities": [e.to_dict() for e in self._entities.values()],
                 "associations": [a.to_dict() for a in self._associations.values()],
@@ -136,10 +143,6 @@ class Project:
     def from_dict(cls, data: dict) -> "Project":
         """Create a Project from a dictionary."""
         project = cls()
-
-        # Load dictionary
-        if "dictionary" in data:
-            project.dictionary = Dictionary.from_dict(data["dictionary"])
 
         # Load MCD elements
         mcd = data.get("mcd", {})
@@ -161,7 +164,6 @@ class Project:
 
     def clear(self) -> None:
         """Clear all project data."""
-        self.dictionary.clear()
         self._entities.clear()
         self._associations.clear()
         self._links.clear()

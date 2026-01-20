@@ -36,8 +36,8 @@ class MainWindow(QMainWindow):
         self._tabs = QTabWidget()
         self.setCentralWidget(self._tabs)
 
-        # Dictionary tab
-        self._dictionary_view = DictionaryView(self._project.dictionary)
+        # Dictionary tab (read-only overview of all attributes)
+        self._dictionary_view = DictionaryView(self._project)
         self._tabs.addTab(self._dictionary_view, "Dictionary")
 
         # MCD tab
@@ -173,7 +173,6 @@ class MainWindow(QMainWindow):
     def _connect_signals(self):
         """Connect signals between components."""
         self._mcd_canvas.modified.connect(self._on_modified)
-        self._dictionary_view.attribute_changed.connect(self._on_modified)
 
     def _update_title(self):
         """Update window title based on project state."""
@@ -192,6 +191,8 @@ class MainWindow(QMainWindow):
         """Handle project modification."""
         self._project.modified = True
         self._update_title()
+        # Refresh dictionary view since attributes now come from entities
+        self._dictionary_view.refresh()
 
     def _check_save(self) -> bool:
         """Check if user wants to save unsaved changes. Returns True to proceed."""
@@ -218,7 +219,7 @@ class MainWindow(QMainWindow):
             return
 
         self._project = Project()
-        self._dictionary_view.set_dictionary(self._project.dictionary)
+        self._dictionary_view.set_project(self._project)
         self._mcd_canvas.set_project(self._project)
         self._sql_view.set_project(self._project)
         self._update_title()
@@ -237,7 +238,7 @@ class MainWindow(QMainWindow):
             project = FileIO.load_project(file_path)
             if project:
                 self._project = project
-                self._dictionary_view.set_dictionary(self._project.dictionary)
+                self._dictionary_view.set_project(self._project)
                 self._mcd_canvas.set_project(self._project)
                 self._sql_view.set_project(self._project)
                 self._update_title()
@@ -303,13 +304,15 @@ class MainWindow(QMainWindow):
 
     def _on_validate(self):
         """Validate the MCD model."""
+        from PySide6.QtWidgets import QSpacerItem, QSizePolicy
+
         controller = MCDController(self._project)
         errors = controller.validate()
 
         if errors:
             msg = "Validation found the following issues:\n\n"
             msg += "\n".join(f"- {e}" for e in errors)
-            QMessageBox.warning(self, "Validation Issues", msg)
+            msgbox = QMessageBox(QMessageBox.Warning, "Validation Issues", msg, QMessageBox.Ok, self)
         else:
             stats = controller.get_statistics()
             msg = "Model is valid!\n\n"
@@ -317,7 +320,13 @@ class MainWindow(QMainWindow):
             msg += f"Entities: {stats['entities']}\n"
             msg += f"Associations: {stats['associations']}\n"
             msg += f"Links: {stats['links']}"
-            QMessageBox.information(self, "Validation Passed", msg)
+            msgbox = QMessageBox(QMessageBox.Information, "Validation Passed", msg, QMessageBox.Ok, self)
+
+        # Force wider dialog using spacer
+        spacer = QSpacerItem(400, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        layout = msgbox.layout()
+        layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
+        msgbox.exec()
 
     def _on_generate_sql(self):
         """Generate SQL and switch to SQL tab."""

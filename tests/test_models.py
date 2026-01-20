@@ -39,30 +39,42 @@ class TestEntity:
     """Tests for Entity model."""
 
     def test_create_entity(self):
-        entity = Entity(name="Client", attributes=["id_client", "nom"])
+        attr1 = Attribute(name="id_client", data_type="INT", is_primary_key=True)
+        attr2 = Attribute(name="nom", data_type="VARCHAR", size=100)
+        entity = Entity(name="Client", attributes=[attr1, attr2])
         assert entity.name == "Client"
         assert len(entity.attributes) == 2
         assert entity.id  # UUID should be generated
 
     def test_add_remove_attribute(self):
         entity = Entity(name="Produit")
-        entity.add_attribute("id_produit")
-        entity.add_attribute("libelle")
+        entity.add_attribute(Attribute(name="id_produit", data_type="INT", is_primary_key=True))
+        entity.add_attribute(Attribute(name="libelle", data_type="VARCHAR", size=100))
         assert len(entity.attributes) == 2
 
         entity.remove_attribute("libelle")
         assert len(entity.attributes) == 1
-        assert "id_produit" in entity.attributes
+        assert entity.get_attribute("id_produit") is not None
 
     def test_to_dict_and_from_dict(self):
-        entity = Entity(name="Commande", attributes=["id_cmd"], x=100, y=200)
+        attr = Attribute(name="id_cmd", data_type="INT", is_primary_key=True)
+        entity = Entity(name="Commande", attributes=[attr], x=100, y=200)
         data = entity.to_dict()
         restored = Entity.from_dict(data)
         assert restored.id == entity.id
         assert restored.name == entity.name
-        assert restored.attributes == entity.attributes
+        assert len(restored.attributes) == len(entity.attributes)
+        assert restored.attributes[0].name == "id_cmd"
         assert restored.x == entity.x
         assert restored.y == entity.y
+
+    def test_get_primary_keys(self):
+        attr1 = Attribute(name="id", data_type="INT", is_primary_key=True)
+        attr2 = Attribute(name="nom", data_type="VARCHAR", size=100)
+        entity = Entity(name="Test", attributes=[attr1, attr2])
+        pks = entity.get_primary_keys()
+        assert len(pks) == 1
+        assert pks[0].name == "id"
 
 
 class TestAssociation:
@@ -75,7 +87,8 @@ class TestAssociation:
         assert assoc.id
 
     def test_carrying_attributes(self):
-        assoc = Association(name="Contenir", attributes=["quantite"])
+        attr = Attribute(name="quantite", data_type="INT")
+        assoc = Association(name="Contenir", attributes=[attr])
         assert assoc.has_attributes() is True
         assoc.remove_attribute("quantite")
         assert assoc.has_attributes() is False
@@ -108,7 +121,7 @@ class TestLink:
 
 
 class TestDictionary:
-    """Tests for Dictionary model."""
+    """Tests for Dictionary model (legacy, still used for backward compatibility)."""
 
     def test_add_and_get_attribute(self):
         dictionary = Dictionary()
@@ -141,10 +154,10 @@ class TestProject:
 
     def test_create_empty_project(self):
         project = Project()
-        assert len(project.dictionary) == 0
         assert len(project.get_all_entities()) == 0
         assert len(project.get_all_associations()) == 0
         assert len(project.get_all_links()) == 0
+        assert len(project.get_all_attributes()) == 0
 
     def test_add_entity(self):
         project = Project()
@@ -175,12 +188,9 @@ class TestProject:
     def test_serialization(self):
         project = Project()
 
-        # Add attribute
+        # Add entity with attributes
         attr = Attribute(name="id_client", data_type="INT", is_primary_key=True)
-        project.dictionary.add_attribute(attr)
-
-        # Add entity
-        entity = Entity(name="Client", attributes=["id_client"], x=100, y=100)
+        entity = Entity(name="Client", attributes=[attr], x=100, y=100)
         project.add_entity(entity)
 
         # Add association
@@ -202,7 +212,6 @@ class TestProject:
         # Deserialize
         restored = Project.from_dict(data)
 
-        assert len(restored.dictionary) == 1
         assert len(restored.get_all_entities()) == 1
         assert len(restored.get_all_associations()) == 1
         assert len(restored.get_all_links()) == 1
@@ -210,3 +219,18 @@ class TestProject:
         restored_entity = restored.get_all_entities()[0]
         assert restored_entity.name == "Client"
         assert restored_entity.id == entity.id
+        assert len(restored_entity.attributes) == 1
+        assert restored_entity.attributes[0].name == "id_client"
+
+    def test_get_all_attributes(self):
+        project = Project()
+
+        attr1 = Attribute(name="id", data_type="INT", is_primary_key=True)
+        attr2 = Attribute(name="nom", data_type="VARCHAR", size=100)
+        entity = Entity(name="Client", attributes=[attr1, attr2])
+        project.add_entity(entity)
+
+        all_attrs = project.get_all_attributes()
+        assert len(all_attrs) == 2
+        assert all_attrs[0][0] == "Client"  # entity name
+        assert all_attrs[0][1].name == "id"  # attribute

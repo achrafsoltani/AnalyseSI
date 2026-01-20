@@ -11,18 +11,14 @@ class MCDController:
         """Validate the MCD model and return list of errors/warnings."""
         errors = []
 
-        # Check for empty dictionary
-        if len(self._project.dictionary) == 0:
-            errors.append("Dictionary is empty. Add attributes first.")
+        # Check for entities
+        entities = self._project.get_all_entities()
+        if not entities:
+            errors.append("No entities defined. Add at least one entity.")
 
         # Check entities have at least one primary key
-        for entity in self._project.get_all_entities():
-            has_pk = False
-            for attr_name in entity.attributes:
-                attr = self._project.dictionary.get_attribute(attr_name)
-                if attr and attr.is_primary_key:
-                    has_pk = True
-                    break
+        for entity in entities:
+            has_pk = any(attr.is_primary_key for attr in entity.attributes)
             if not has_pk:
                 errors.append(f"Entity '{entity.name}' has no primary key attribute.")
 
@@ -44,8 +40,12 @@ class MCDController:
 
     def get_statistics(self) -> dict:
         """Get statistics about the current model."""
+        # Count all attributes across all entities
+        total_attributes = sum(
+            len(entity.attributes) for entity in self._project.get_all_entities()
+        )
         return {
-            "attributes": len(self._project.dictionary),
+            "attributes": total_attributes,
             "entities": len(self._project.get_all_entities()),
             "associations": len(self._project.get_all_associations()),
             "links": len(self._project.get_all_links())

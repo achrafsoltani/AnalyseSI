@@ -1,39 +1,38 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTableView, QPushButton,
-    QHeaderView, QMessageBox, QAbstractItemView
+    QWidget, QVBoxLayout, QHBoxLayout, QTableView, QLabel,
+    QHeaderView, QAbstractItemView
 )
-from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, Signal
+from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from PySide6.QtGui import QColor
 
 from ..models.attribute import Attribute
-from ..models.dictionary import Dictionary
-from ..utils.constants import DATA_TYPES
+from ..models.project import Project
 
 
 class DictionaryTableModel(QAbstractTableModel):
-    """Table model for the data dictionary."""
+    """Read-only table model showing all attributes across entities."""
 
-    COLUMNS = ["Name", "Type", "Size", "Primary Key"]
+    COLUMNS = ["Entity", "Attribute", "Type", "Size", "PK"]
 
-    def __init__(self, dictionary: Dictionary, parent=None):
+    def __init__(self, project: Project, parent=None):
         super().__init__(parent)
-        self._dictionary = dictionary
-        self._attribute_list: list[Attribute] = []
+        self._project = project
+        self._data: list[tuple[str, Attribute]] = []
         self.refresh()
 
-    def set_dictionary(self, dictionary: Dictionary):
-        """Set a new dictionary and refresh."""
-        self._dictionary = dictionary
+    def set_project(self, project: Project):
+        """Set a new project and refresh."""
+        self._project = project
         self.refresh()
 
     def refresh(self):
-        """Refresh the model from the dictionary."""
+        """Refresh the model from the project."""
         self.beginResetModel()
-        self._attribute_list = self._dictionary.get_all_attributes()
+        self._data = self._project.get_all_attributes()
         self.endResetModel()
 
     def rowCount(self, parent=QModelIndex()) -> int:
-        return len(self._attribute_list)
+        return len(self._data)
 
     def columnCount(self, parent=QModelIndex()) -> int:
         return len(self.COLUMNS)
@@ -44,20 +43,22 @@ class DictionaryTableModel(QAbstractTableModel):
         return None
 
     def data(self, index: QModelIndex, role=Qt.DisplayRole):
-        if not index.isValid() or index.row() >= len(self._attribute_list):
+        if not index.isValid() or index.row() >= len(self._data):
             return None
 
-        attr = self._attribute_list[index.row()]
+        entity_name, attr = self._data[index.row()]
         col = index.column()
 
         if role == Qt.DisplayRole:
             if col == 0:
-                return attr.name
+                return entity_name
             elif col == 1:
-                return attr.data_type
+                return attr.name
             elif col == 2:
-                return str(attr.size) if attr.size else ""
+                return attr.data_type
             elif col == 3:
+                return str(attr.size) if attr.size else ""
+            elif col == 4:
                 return "Yes" if attr.is_primary_key else "No"
 
         elif role == Qt.BackgroundRole:
@@ -65,147 +66,62 @@ class DictionaryTableModel(QAbstractTableModel):
                 return QColor("#FFFDE7")  # Light yellow for PKs
 
         elif role == Qt.TextAlignmentRole:
-            if col in (2, 3):
+            if col in (3, 4):
                 return Qt.AlignCenter
 
         return None
 
-    def get_attribute_at(self, row: int) -> Attribute | None:
-        """Get the attribute at a specific row."""
-        if 0 <= row < len(self._attribute_list):
-            return self._attribute_list[row]
-        return None
-
 
 class DictionaryView(QWidget):
-    """View for managing the data dictionary."""
+    """Read-only view showing all attributes across all entities."""
 
-    attribute_changed = Signal()  # Emitted when dictionary changes
-
-    def __init__(self, dictionary: Dictionary, parent=None):
+    def __init__(self, project: Project, parent=None):
         super().__init__(parent)
-        self._dictionary = dictionary
+        self._project = project
         self._setup_ui()
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
 
-        # Toolbar
-        toolbar = QHBoxLayout()
-
-        self._add_btn = QPushButton("Add Attribute")
-        self._add_btn.clicked.connect(self._on_add)
-        toolbar.addWidget(self._add_btn)
-
-        self._edit_btn = QPushButton("Edit")
-        self._edit_btn.clicked.connect(self._on_edit)
-        toolbar.addWidget(self._edit_btn)
-
-        self._delete_btn = QPushButton("Delete")
-        self._delete_btn.clicked.connect(self._on_delete)
-        toolbar.addWidget(self._delete_btn)
-
-        toolbar.addStretch()
-        layout.addLayout(toolbar)
+        # Info label
+        info_label = QLabel(
+            "This is a read-only overview of all attributes. "
+            "To edit attributes, go to the MCD tab and edit the entity."
+        )
+        info_label.setWordWrap(True)
+        info_label.setStyleSheet("color: gray; padding: 5px;")
+        layout.addWidget(info_label)
 
         # Table view
-        self._model = DictionaryTableModel(self._dictionary)
+        self._model = DictionaryTableModel(self._project)
         self._table = QTableView()
         self._table.setModel(self._model)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table.setSelectionMode(QAbstractItemView.SingleSelection)
         self._table.setAlternatingRowColors(True)
-        self._table.doubleClicked.connect(self._on_edit)
+        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
         # Configure header
         header = self._table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(0, QHeaderView.Interactive)  # Entity
+        header.setSectionResizeMode(1, QHeaderView.Stretch)      # Attribute
+        header.setSectionResizeMode(2, QHeaderView.Interactive)  # Type
+        header.setSectionResizeMode(3, QHeaderView.Interactive)  # Size
+        header.setSectionResizeMode(4, QHeaderView.Interactive)  # PK
+        header.resizeSection(0, 120)
+        header.resizeSection(2, 100)
+        header.resizeSection(3, 70)
+        header.resizeSection(4, 50)
+        header.setStretchLastSection(False)
 
         layout.addWidget(self._table)
 
-    def set_dictionary(self, dictionary: Dictionary):
-        """Set a new dictionary and refresh the view."""
-        self._dictionary = dictionary
-        self._model.set_dictionary(dictionary)
+    def set_project(self, project: Project):
+        """Set a new project and refresh the view."""
+        self._project = project
+        self._model.set_project(project)
 
     def refresh(self):
-        """Refresh the view from the dictionary."""
+        """Refresh the view from the project."""
         self._model.refresh()
-
-    def _get_selected_row(self) -> int:
-        """Get the currently selected row index, or -1 if none."""
-        indexes = self._table.selectionModel().selectedRows()
-        if indexes:
-            return indexes[0].row()
-        return -1
-
-    def _on_add(self):
-        """Handle add button click."""
-        from .dialogs.attribute_dialog import AttributeDialog
-
-        dialog = AttributeDialog(self._dictionary, parent=self)
-        if dialog.exec():
-            attr = dialog.get_attribute()
-            if attr:
-                if self._dictionary.add_attribute(attr):
-                    self._model.refresh()
-                    self.attribute_changed.emit()
-                else:
-                    QMessageBox.warning(
-                        self, "Error",
-                        f"Attribute '{attr.name}' already exists."
-                    )
-
-    def _on_edit(self):
-        """Handle edit button click."""
-        row = self._get_selected_row()
-        if row < 0:
-            QMessageBox.information(self, "Info", "Please select an attribute to edit.")
-            return
-
-        attr = self._model.get_attribute_at(row)
-        if not attr:
-            return
-
-        from .dialogs.attribute_dialog import AttributeDialog
-
-        dialog = AttributeDialog(self._dictionary, attribute=attr, parent=self)
-        if dialog.exec():
-            new_attr = dialog.get_attribute()
-            if new_attr:
-                if self._dictionary.update_attribute(attr.name, new_attr):
-                    self._model.refresh()
-                    self.attribute_changed.emit()
-                else:
-                    QMessageBox.warning(
-                        self, "Error",
-                        f"Could not update attribute. Name '{new_attr.name}' may already exist."
-                    )
-
-    def _on_delete(self):
-        """Handle delete button click."""
-        row = self._get_selected_row()
-        if row < 0:
-            QMessageBox.information(self, "Info", "Please select an attribute to delete.")
-            return
-
-        attr = self._model.get_attribute_at(row)
-        if not attr:
-            return
-
-        result = QMessageBox.question(
-            self, "Confirm Delete",
-            f"Are you sure you want to delete attribute '{attr.name}'?\n"
-            "This may affect entities using this attribute.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
-
-        if result == QMessageBox.Yes:
-            self._dictionary.remove_attribute(attr.name)
-            self._model.refresh()
-            self.attribute_changed.emit()

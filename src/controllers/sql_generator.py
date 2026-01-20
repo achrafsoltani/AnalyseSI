@@ -1,8 +1,9 @@
-from typing import List, Tuple
+from typing import List
 from ..models.project import Project
 from ..models.entity import Entity
 from ..models.association import Association
 from ..models.link import Link
+from ..models.attribute import Attribute
 
 
 class SQLGenerator:
@@ -36,20 +37,18 @@ class SQLGenerator:
 
     def _generate_entity_table(self, entity: Entity) -> str:
         """Generate CREATE TABLE statement for an entity."""
-        dictionary = self._project.dictionary
         lines = []
         lines.append(f"CREATE TABLE {self._safe_name(entity.name)} (")
 
         columns = []
         pk_columns = []
 
-        for attr_name in entity.attributes:
-            attr = dictionary.get_attribute(attr_name)
-            if attr:
-                col_def = f"    {self._safe_name(attr.name)} {attr.get_sql_type()}"
-                if attr.is_primary_key:
-                    pk_columns.append(self._safe_name(attr.name))
-                columns.append(col_def)
+        # Add columns from entity's own attributes
+        for attr in entity.attributes:
+            col_def = f"    {self._safe_name(attr.name)} {attr.get_sql_type()}"
+            if attr.is_primary_key:
+                pk_columns.append(self._safe_name(attr.name))
+            columns.append(col_def)
 
         # Check if we need to add foreign keys from 1,1 or 0,1 relationships
         links = self._project.get_links_for_entity(entity.id)
@@ -62,17 +61,14 @@ class SQLGenerator:
                         # This is a N-1 relationship, add FK to this entity
                         other_entity = self._project.get_entity(other_link.entity_id)
                         if other_entity:
-                            fk_columns = self._get_pk_columns(other_entity)
-                            for fk_col in fk_columns:
-                                attr = dictionary.get_attribute(fk_col)
-                                if attr:
-                                    col_name = f"fk_{self._safe_name(other_entity.name)}_{fk_col}"
-                                    col_def = f"    {col_name} {attr.get_sql_type()}"
-                                    columns.append(col_def)
-                                    columns.append(
-                                        f"    FOREIGN KEY ({col_name}) "
-                                        f"REFERENCES {self._safe_name(other_entity.name)}({self._safe_name(fk_col)})"
-                                    )
+                            for pk_attr in other_entity.get_primary_keys():
+                                col_name = f"fk_{self._safe_name(other_entity.name)}_{pk_attr.name}"
+                                col_def = f"    {col_name} {pk_attr.get_sql_type()}"
+                                columns.append(col_def)
+                                columns.append(
+                                    f"    FOREIGN KEY ({col_name}) "
+                                    f"REFERENCES {self._safe_name(other_entity.name)}({self._safe_name(pk_attr.name)})"
+                                )
 
         # Add primary key constraint
         if pk_columns:
@@ -85,7 +81,6 @@ class SQLGenerator:
 
     def _generate_association_table(self, assoc: Association) -> str:
         """Generate CREATE TABLE for associations that need junction tables."""
-        dictionary = self._project.dictionary
         links = self._project.get_links_for_association(assoc.id)
 
         if len(links) < 2:
@@ -102,7 +97,6 @@ class SQLGenerator:
 
     def _generate_junction_table(self, assoc: Association, links: List[Link]) -> str:
         """Generate a junction table for N-N relationships."""
-        dictionary = self._project.dictionary
         lines = []
         table_name = self._safe_name(assoc.name)
         lines.append(f"CREATE TABLE {table_name} (")
@@ -115,25 +109,20 @@ class SQLGenerator:
         for link in links:
             entity = self._project.get_entity(link.entity_id)
             if entity:
-                pk_cols = self._get_pk_columns(entity)
-                for pk_col in pk_cols:
-                    attr = dictionary.get_attribute(pk_col)
-                    if attr:
-                        col_name = f"fk_{self._safe_name(entity.name)}_{pk_col}"
-                        col_def = f"    {col_name} {attr.get_sql_type()} NOT NULL"
-                        columns.append(col_def)
-                        pk_columns.append(col_name)
-                        fk_constraints.append(
-                            f"    FOREIGN KEY ({col_name}) "
-                            f"REFERENCES {self._safe_name(entity.name)}({self._safe_name(pk_col)})"
-                        )
+                for pk_attr in entity.get_primary_keys():
+                    col_name = f"fk_{self._safe_name(entity.name)}_{pk_attr.name}"
+                    col_def = f"    {col_name} {pk_attr.get_sql_type()} NOT NULL"
+                    columns.append(col_def)
+                    pk_columns.append(col_name)
+                    fk_constraints.append(
+                        f"    FOREIGN KEY ({col_name}) "
+                        f"REFERENCES {self._safe_name(entity.name)}({self._safe_name(pk_attr.name)})"
+                    )
 
-        # Add carrying attributes
-        for attr_name in assoc.attributes:
-            attr = dictionary.get_attribute(attr_name)
-            if attr:
-                col_def = f"    {self._safe_name(attr.name)} {attr.get_sql_type()}"
-                columns.append(col_def)
+        # Add carrying attributes (association's own attributes)
+        for attr in assoc.attributes:
+            col_def = f"    {self._safe_name(attr.name)} {attr.get_sql_type()}"
+            columns.append(col_def)
 
         # Add primary key (composite of all foreign keys)
         if pk_columns:
@@ -146,16 +135,6 @@ class SQLGenerator:
         lines.append(");")
 
         return "\n".join(lines)
-
-    def _get_pk_columns(self, entity: Entity) -> List[str]:
-        """Get primary key column names for an entity."""
-        dictionary = self._project.dictionary
-        pk_columns = []
-        for attr_name in entity.attributes:
-            attr = dictionary.get_attribute(attr_name)
-            if attr and attr.is_primary_key:
-                pk_columns.append(attr_name)
-        return pk_columns
 
     def _safe_name(self, name: str) -> str:
         """Convert name to safe SQL identifier."""

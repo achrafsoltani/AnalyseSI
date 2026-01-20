@@ -140,14 +140,7 @@ class MCDCanvas(QGraphicsView):
         """Add a new entity at the context menu position."""
         from .dialogs.entity_dialog import EntityDialog
 
-        if len(self._project.dictionary) == 0:
-            QMessageBox.warning(
-                self, "No Attributes",
-                "Please add attributes to the dictionary first."
-            )
-            return
-
-        dialog = EntityDialog(self._project.dictionary, parent=self)
+        dialog = EntityDialog(parent=self)
         if dialog.exec():
             entity = dialog.get_entity()
             if entity:
@@ -164,7 +157,7 @@ class MCDCanvas(QGraphicsView):
         """Add a new association at the context menu position."""
         from .dialogs.association_dialog import AssociationDialog
 
-        dialog = AssociationDialog(self._project.dictionary, parent=self)
+        dialog = AssociationDialog(parent=self)
         if dialog.exec():
             assoc = dialog.get_association()
             if assoc:
@@ -181,7 +174,7 @@ class MCDCanvas(QGraphicsView):
         """Edit an existing entity."""
         from .dialogs.entity_dialog import EntityDialog
 
-        dialog = EntityDialog(self._project.dictionary, entity=item.entity, parent=self)
+        dialog = EntityDialog(entity=item.entity, parent=self)
         if dialog.exec():
             dialog.get_entity()  # Updates the entity in place
             item.update()
@@ -216,9 +209,7 @@ class MCDCanvas(QGraphicsView):
         """Edit an existing association."""
         from .dialogs.association_dialog import AssociationDialog
 
-        dialog = AssociationDialog(
-            self._project.dictionary, association=item.association, parent=self
-        )
+        dialog = AssociationDialog(association=item.association, parent=self)
         if dialog.exec():
             dialog.get_association()  # Updates the association in place
             item.update()

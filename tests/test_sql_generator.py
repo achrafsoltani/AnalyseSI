@@ -17,21 +17,14 @@ class TestSQLGenerator:
         """Create a simple project with one entity."""
         project = Project()
 
-        # Add attributes
-        project.dictionary.add_attribute(
-            Attribute(name="id_client", data_type="INT", is_primary_key=True)
-        )
-        project.dictionary.add_attribute(
-            Attribute(name="nom", data_type="VARCHAR", size=100)
-        )
-        project.dictionary.add_attribute(
-            Attribute(name="email", data_type="VARCHAR", size=255)
-        )
-
-        # Add entity
+        # Add entity with attributes directly
         entity = Entity(
             name="Client",
-            attributes=["id_client", "nom", "email"]
+            attributes=[
+                Attribute(name="id_client", data_type="INT", is_primary_key=True),
+                Attribute(name="nom", data_type="VARCHAR", size=100),
+                Attribute(name="email", data_type="VARCHAR", size=255)
+            ]
         )
         project.add_entity(entity)
 
@@ -42,40 +35,29 @@ class TestSQLGenerator:
         """Create a project with N-N relationship."""
         project = Project()
 
-        # Add attributes
-        project.dictionary.add_attribute(
-            Attribute(name="id_etudiant", data_type="INT", is_primary_key=True)
-        )
-        project.dictionary.add_attribute(
-            Attribute(name="nom_etudiant", data_type="VARCHAR", size=100)
-        )
-        project.dictionary.add_attribute(
-            Attribute(name="id_cours", data_type="INT", is_primary_key=True)
-        )
-        project.dictionary.add_attribute(
-            Attribute(name="titre_cours", data_type="VARCHAR", size=200)
-        )
-        project.dictionary.add_attribute(
-            Attribute(name="note", data_type="DECIMAL", size=5)
-        )
-
-        # Add entities
+        # Add entities with attributes directly
         etudiant = Entity(
             name="Etudiant",
-            attributes=["id_etudiant", "nom_etudiant"]
+            attributes=[
+                Attribute(name="id_etudiant", data_type="INT", is_primary_key=True),
+                Attribute(name="nom_etudiant", data_type="VARCHAR", size=100)
+            ]
         )
         project.add_entity(etudiant)
 
         cours = Entity(
             name="Cours",
-            attributes=["id_cours", "titre_cours"]
+            attributes=[
+                Attribute(name="id_cours", data_type="INT", is_primary_key=True),
+                Attribute(name="titre_cours", data_type="VARCHAR", size=200)
+            ]
         )
         project.add_entity(cours)
 
         # Add association with carrying attribute
         inscription = Association(
             name="Inscription",
-            attributes=["note"]  # Carrying attribute
+            attributes=[Attribute(name="note", data_type="DECIMAL", size=5)]
         )
         project.add_association(inscription)
 
@@ -127,12 +109,11 @@ class TestSQLGenerator:
         generator = SQLGenerator(simple_project)
 
         # Add entity with special characters
-        simple_project.dictionary.add_attribute(
-            Attribute(name="id_produit", data_type="INT", is_primary_key=True)
-        )
         simple_project.add_entity(Entity(
             name="Produit Special",
-            attributes=["id_produit"]
+            attributes=[
+                Attribute(name="id_produit", data_type="INT", is_primary_key=True)
+            ]
         ))
 
         sql = generator.generate()
