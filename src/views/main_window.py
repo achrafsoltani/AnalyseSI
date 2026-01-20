@@ -218,8 +218,7 @@ class MainWindow(QMainWindow):
             return
 
         self._project = Project()
-        self._dictionary_view._dictionary = self._project.dictionary
-        self._dictionary_view.refresh()
+        self._dictionary_view.set_dictionary(self._project.dictionary)
         self._mcd_canvas.set_project(self._project)
         self._sql_view.set_project(self._project)
         self._update_title()
@@ -238,8 +237,7 @@ class MainWindow(QMainWindow):
             project = FileIO.load_project(file_path)
             if project:
                 self._project = project
-                self._dictionary_view._dictionary = self._project.dictionary
-                self._dictionary_view.refresh()
+                self._dictionary_view.set_dictionary(self._project.dictionary)
                 self._mcd_canvas.set_project(self._project)
                 self._sql_view.set_project(self._project)
                 self._update_title()

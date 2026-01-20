@@ -21,6 +21,11 @@ class DictionaryTableModel(QAbstractTableModel):
         self._attribute_list: list[Attribute] = []
         self.refresh()
 
+    def set_dictionary(self, dictionary: Dictionary):
+        """Set a new dictionary and refresh."""
+        self._dictionary = dictionary
+        self.refresh()
+
     def refresh(self):
         """Refresh the model from the dictionary."""
         self.beginResetModel()
@@ -121,6 +126,11 @@ class DictionaryView(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
 
         layout.addWidget(self._table)
+
+    def set_dictionary(self, dictionary: Dictionary):
+        """Set a new dictionary and refresh the view."""
+        self._dictionary = dictionary
+        self._model.set_dictionary(dictionary)
 
     def refresh(self):
         """Refresh the view from the dictionary."""

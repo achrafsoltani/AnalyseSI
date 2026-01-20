@@ -3,10 +3,11 @@ from PySide6.QtWidgets import (
     QGraphicsLineItem, QGraphicsTextItem, QGraphicsPathItem,
     QStyleOptionGraphicsItem, QWidget
 )
-from PySide6.QtCore import Qt, QRectF, QPointF
+from PySide6.QtCore import Qt, QRectF, QPointF, QLineF
 from PySide6.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QPainterPath
 )
+import math
 
 from ..models.entity import Entity
 from ..models.association import Association
@@ -83,6 +84,33 @@ class EntityItem(QGraphicsItem):
     def get_center(self) -> QPointF:
         """Get the center point in scene coordinates."""
         return self.scenePos()
+
+    def get_edge_point(self, target: QPointF) -> QPointF:
+        """Get the point on the rectangle edge closest to the target."""
+        center = self.scenePos()
+        dx = target.x() - center.x()
+        dy = target.y() - center.y()
+
+        if dx == 0 and dy == 0:
+            return center
+
+        # Half dimensions
+        hw = self._width / 2
+        hh = self._height / 2
+
+        # Calculate intersection with rectangle edges
+        if abs(dx) * hh > abs(dy) * hw:
+            # Intersects left or right edge
+            if dx > 0:
+                return QPointF(center.x() + hw, center.y() + dy * hw / dx)
+            else:
+                return QPointF(center.x() - hw, center.y() - dy * hw / dx)
+        else:
+            # Intersects top or bottom edge
+            if dy > 0:
+                return QPointF(center.x() + dx * hh / dy, center.y() + hh)
+            else:
+                return QPointF(center.x() - dx * hh / dy, center.y() - hh)
 
 
 class AssociationItem(QGraphicsItem):
@@ -162,6 +190,25 @@ class AssociationItem(QGraphicsItem):
         """Get the center point in scene coordinates."""
         return self.scenePos()
 
+    def get_edge_point(self, target: QPointF) -> QPointF:
+        """Get the point on the diamond edge closest to the target."""
+        center = self.scenePos()
+        dx = target.x() - center.x()
+        dy = target.y() - center.y()
+
+        if dx == 0 and dy == 0:
+            return center
+
+        # Diamond half dimensions (adjusted for the corner offset)
+        hw = self._width / 2 - 15  # corner offset
+        hh = self._height / 2 - 15
+
+        # For a diamond, the edge equation is |x|/hw + |y|/hh = 1
+        # Find the scale factor to reach the edge
+        scale = 1.0 / (abs(dx) / hw + abs(dy) / hh) if (abs(dx) / hw + abs(dy) / hh) > 0 else 1.0
+
+        return QPointF(center.x() + dx * scale, center.y() + dy * scale)
+
 
 class LinkItem(QGraphicsLineItem):
     """Graphical representation of a link between entity and association."""
@@ -195,16 +242,20 @@ class LinkItem(QGraphicsLineItem):
 
     def update_position(self):
         """Update line position based on connected items."""
-        p1 = self.entity_item.get_center()
-        p2 = self.association_item.get_center()
+        # Get centers first to calculate direction
+        entity_center = self.entity_item.get_center()
+        assoc_center = self.association_item.get_center()
+
+        # Get edge points (where line meets the shape borders)
+        p1 = self.entity_item.get_edge_point(assoc_center)
+        p2 = self.association_item.get_edge_point(entity_center)
+
         self.setLine(p1.x(), p1.y(), p2.x(), p2.y())
 
-        # Position cardinality label near entity
-        mid_x = (p1.x() + p2.x()) / 2
-        mid_y = (p1.y() + p2.y()) / 2
-        # Place label closer to entity side
-        label_x = p1.x() + (mid_x - p1.x()) * 0.3
-        label_y = p1.y() + (mid_y - p1.y()) * 0.3 - 15
+        # Position cardinality label near entity edge
+        # Place label slightly offset from the entity edge point
+        label_x = p1.x() + (p2.x() - p1.x()) * 0.15 - 15
+        label_y = p1.y() + (p2.y() - p1.y()) * 0.15 - 10
 
         self._card_label.setPlainText(f"({self.link.cardinality})")
         self._card_label.setPos(label_x, label_y)
