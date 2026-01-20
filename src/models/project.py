@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional, Tuple
+from datetime import datetime
 from .entity import Entity
 from .association import Association
 from .link import Link
@@ -8,7 +9,7 @@ from .attribute import Attribute
 class Project:
     """Container for an entire AnalyseSI project."""
 
-    VERSION = "2.0"  # New version for entity-based attributes
+    VERSION = "2.1"  # Version with metadata support
 
     def __init__(self):
         self._entities: Dict[str, Entity] = {}
@@ -16,6 +17,13 @@ class Project:
         self._links: Dict[str, Link] = {}
         self.file_path: Optional[str] = None
         self.modified = False
+
+        # Project metadata
+        self.name: str = "Untitled Project"
+        self.description: str = ""
+        self.author: str = ""
+        self.created_at: str = datetime.now().isoformat()
+        self.modified_at: str = self.created_at
 
     # Entity operations
     def add_entity(self, entity: Entity) -> None:
@@ -130,8 +138,16 @@ class Project:
     # Serialization
     def to_dict(self) -> dict:
         """Convert project to dictionary for JSON serialization."""
+        self.modified_at = datetime.now().isoformat()
         return {
             "version": self.VERSION,
+            "metadata": {
+                "name": self.name,
+                "description": self.description,
+                "author": self.author,
+                "created_at": self.created_at,
+                "modified_at": self.modified_at
+            },
             "mcd": {
                 "entities": [e.to_dict() for e in self._entities.values()],
                 "associations": [a.to_dict() for a in self._associations.values()],
@@ -143,6 +159,14 @@ class Project:
     def from_dict(cls, data: dict) -> "Project":
         """Create a Project from a dictionary."""
         project = cls()
+
+        # Load metadata
+        metadata = data.get("metadata", {})
+        project.name = metadata.get("name", "Untitled Project")
+        project.description = metadata.get("description", "")
+        project.author = metadata.get("author", "")
+        project.created_at = metadata.get("created_at", project.created_at)
+        project.modified_at = metadata.get("modified_at", project.modified_at)
 
         # Load MCD elements
         mcd = data.get("mcd", {})

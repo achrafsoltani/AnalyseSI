@@ -66,7 +66,7 @@ class EntityItem(QGraphicsItem):
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: QWidget = None):
         rect = self.boundingRect()
         path = QPainterPath()
-        path.addRoundedRect(rect, 10, 10)
+        path.addRoundedRect(rect, 3, 3)  # Sharp corners (minimal rounding)
 
         # Fill
         if self.isSelected():
@@ -184,7 +184,14 @@ class EntityItem(QGraphicsItem):
 
 
 class AssociationItem(QGraphicsItem):
-    """Graphical representation of an MCD association (rounded octagon/diamond shape)."""
+    """Graphical representation of an MCD association (rounded rectangle/pill shape)."""
+
+    # Class-level setting for showing attributes
+    show_attributes = True
+    HEADER_HEIGHT = 30
+    ATTR_HEIGHT = 18
+    MIN_WIDTH = 80
+    MIN_HEIGHT = 40
 
     def __init__(self, association: Association, parent=None):
         super().__init__(parent)
@@ -194,28 +201,38 @@ class AssociationItem(QGraphicsItem):
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges)
         self.setCursor(Qt.OpenHandCursor)
-        self._width = ASSOCIATION_WIDTH
-        self._height = ASSOCIATION_HEIGHT
         self._links: list["LinkItem"] = []
+        self._update_size()
+
+    def _update_size(self):
+        """Update size based on content."""
+        self.prepareGeometryChange()
+        # Calculate width based on name length
+        name_width = len(self.association.name) * 9 + 30
+        self._width = max(self.MIN_WIDTH, name_width)
+
+        if AssociationItem.show_attributes and self.association.attributes:
+            # Calculate width for attributes too
+            for attr in self.association.attributes:
+                attr_text = f"{attr.name} : {attr.data_type}"
+                if attr.size:
+                    attr_text += f"({attr.size})"
+                attr_width = len(attr_text) * 7 + 20
+                self._width = max(self._width, attr_width)
+            self._height = self.HEADER_HEIGHT + len(self.association.attributes) * self.ATTR_HEIGHT + 5
+        else:
+            self._height = self.MIN_HEIGHT
 
     def boundingRect(self) -> QRectF:
         return QRectF(-self._width / 2, -self._height / 2, self._width, self._height)
 
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: QWidget = None):
-        # Create rounded diamond/octagon shape
         rect = self.boundingRect()
         path = QPainterPath()
 
-        # Create a rounded diamond shape
-        cx, cy = 0, 0
-        w, h = self._width / 2, self._height / 2
-        corner = 15  # Corner rounding
-
-        path.moveTo(cx - w + corner, cy)
-        path.lineTo(cx, cy - h + corner)
-        path.lineTo(cx + w - corner, cy)
-        path.lineTo(cx, cy + h - corner)
-        path.closeSubpath()
+        # Fully rounded corners (pill shape) - radius is half the height
+        radius = self._height / 2 if not (AssociationItem.show_attributes and self.association.attributes) else 15
+        path.addRoundedRect(rect, radius, radius)
 
         # Fill
         if self.isSelected():
@@ -232,8 +249,34 @@ class AssociationItem(QGraphicsItem):
         font = QFont()
         font.setItalic(True)
         painter.setFont(font)
-        text_rect = QRectF(-self._width / 2 + 5, -15, self._width - 10, 30)
-        painter.drawText(text_rect, Qt.AlignCenter, self.association.name)
+
+        if AssociationItem.show_attributes and self.association.attributes:
+            # Draw header with name
+            header_rect = QRectF(rect.left(), rect.top(), rect.width(), self.HEADER_HEIGHT)
+            painter.drawText(header_rect, Qt.AlignCenter, self.association.name)
+
+            # Draw separator line
+            sep_y = rect.top() + self.HEADER_HEIGHT - 3
+            painter.setPen(QPen(QColor(ASSOCIATION_BORDER), 1))
+            painter.drawLine(int(rect.left() + 10), int(sep_y), int(rect.right() - 10), int(sep_y))
+
+            # Draw carrying attributes
+            font.setItalic(False)
+            font.setPointSize(font.pointSize() - 1)
+            painter.setFont(font)
+            painter.setPen(Qt.black)
+
+            y = rect.top() + self.HEADER_HEIGHT
+            for attr in self.association.attributes:
+                attr_text = f"{attr.name} : {attr.data_type}"
+                if attr.size:
+                    attr_text += f"({attr.size})"
+                text_rect = QRectF(rect.left() + 8, y, rect.width() - 16, self.ATTR_HEIGHT)
+                painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, attr_text)
+                y += self.ATTR_HEIGHT
+        else:
+            # Simple mode - just name centered
+            painter.drawText(rect, Qt.AlignCenter, self.association.name)
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionHasChanged:
@@ -261,7 +304,7 @@ class AssociationItem(QGraphicsItem):
         return self.scenePos()
 
     def get_edge_point(self, target: QPointF) -> QPointF:
-        """Get the point on the diamond edge closest to the target."""
+        """Get the point on the rounded rectangle edge closest to the target."""
         center = self.scenePos()
         dx = target.x() - center.x()
         dy = target.y() - center.y()
@@ -269,26 +312,35 @@ class AssociationItem(QGraphicsItem):
         if dx == 0 and dy == 0:
             return center
 
-        # Diamond half dimensions (adjusted for the corner offset)
-        hw = self._width / 2 - 15  # corner offset
-        hh = self._height / 2 - 15
+        # Half dimensions
+        hw = self._width / 2
+        hh = self._height / 2
 
-        # For a diamond, the edge equation is |x|/hw + |y|/hh = 1
-        # Find the scale factor to reach the edge
-        scale = 1.0 / (abs(dx) / hw + abs(dy) / hh) if (abs(dx) / hw + abs(dy) / hh) > 0 else 1.0
-
-        return QPointF(center.x() + dx * scale, center.y() + dy * scale)
+        # Calculate intersection with rectangle edges
+        if abs(dx) * hh > abs(dy) * hw:
+            # Intersects left or right edge
+            if dx > 0:
+                return QPointF(center.x() + hw, center.y() + dy * hw / dx)
+            else:
+                return QPointF(center.x() - hw, center.y() - dy * hw / dx)
+        else:
+            # Intersects top or bottom edge
+            if dy > 0:
+                return QPointF(center.x() + dx * hh / dy, center.y() + hh)
+            else:
+                return QPointF(center.x() - dx * hh / dy, center.y() - hh)
 
     def refresh(self):
         """Refresh the item after association changes."""
+        self._update_size()
         self.update()
         # Update connected links
         for link_item in self._links:
             link_item.update_position()
 
 
-class LinkItem(QGraphicsLineItem):
-    """Graphical representation of a link between entity and association."""
+class LinkItem(QGraphicsPathItem):
+    """Graphical representation of a link between entity and association using Bezier curves."""
 
     def __init__(
         self,
@@ -303,13 +355,26 @@ class LinkItem(QGraphicsLineItem):
         self.association_item = association_item
 
         self.setFlag(QGraphicsItem.ItemIsSelectable)
-        self.setPen(QPen(QColor(LINK_COLOR), 2))
+        self.setPen(QPen(QColor(LINK_COLOR), 1))
+        self.setBrush(Qt.NoBrush)
+
+        # Create background for cardinality label (white box)
+        self._card_bg = QGraphicsRectItem(self)
+        self._card_bg.setBrush(QBrush(QColor("white")))
+        self._card_bg.setPen(QPen(QColor(LINK_COLOR), 1))
 
         # Create cardinality label
         self._card_label = QGraphicsTextItem(self)
         font = QFont()
         font.setBold(True)
+        font.setPointSize(9)
         self._card_label.setFont(font)
+        self._card_label.setDefaultTextColor(QColor("black"))
+
+        # Store points for curve calculation
+        self._p1 = QPointF()
+        self._p2 = QPointF()
+        self._control = QPointF()
 
         # Register with connected items
         entity_item.add_link(self)
@@ -318,30 +383,75 @@ class LinkItem(QGraphicsLineItem):
         self.update_position()
 
     def update_position(self):
-        """Update line position based on connected items."""
+        """Update curve position based on connected items."""
         # Get centers first to calculate direction
         entity_center = self.entity_item.get_center()
         assoc_center = self.association_item.get_center()
 
         # Get edge points (where line meets the shape borders)
-        p1 = self.entity_item.get_edge_point(assoc_center)
-        p2 = self.association_item.get_edge_point(entity_center)
+        self._p1 = self.entity_item.get_edge_point(assoc_center)
+        self._p2 = self.association_item.get_edge_point(entity_center)
 
-        self.setLine(p1.x(), p1.y(), p2.x(), p2.y())
+        # Calculate control point for quadratic Bezier curve
+        # Midpoint between the two endpoints
+        mid_x = (self._p1.x() + self._p2.x()) / 2
+        mid_y = (self._p1.y() + self._p2.y()) / 2
 
-        # Position cardinality label near entity edge
-        # Place label slightly offset from the entity edge point
-        label_x = p1.x() + (p2.x() - p1.x()) * 0.15 - 15
-        label_y = p1.y() + (p2.y() - p1.y()) * 0.15 - 10
+        # Calculate perpendicular offset for curve
+        dx = self._p2.x() - self._p1.x()
+        dy = self._p2.y() - self._p1.y()
+        length = math.sqrt(dx * dx + dy * dy)
 
-        self._card_label.setPlainText(f"({self.link.cardinality})")
-        self._card_label.setPos(label_x, label_y)
+        if length > 0:
+            # Perpendicular vector (normalized)
+            perp_x = -dy / length
+            perp_y = dx / length
+            # Curve amount (proportional to distance, but capped)
+            curve_amount = min(length * 0.15, 30)
+            self._control = QPointF(mid_x + perp_x * curve_amount, mid_y + perp_y * curve_amount)
+        else:
+            self._control = QPointF(mid_x, mid_y)
+
+        # Create the Bezier path
+        path = QPainterPath()
+        path.moveTo(self._p1)
+        path.quadTo(self._control, self._p2)
+        self.setPath(path)
+
+        # Position cardinality label near entity edge along the curve
+        # Use a point on the Bezier curve at t=0.2
+        t = 0.2
+        label_x = (1-t)*(1-t)*self._p1.x() + 2*(1-t)*t*self._control.x() + t*t*self._p2.x()
+        label_y = (1-t)*(1-t)*self._p1.y() + 2*(1-t)*t*self._control.y() + t*t*self._p2.y()
+
+        card_text = f"{self.link.cardinality_min},{self.link.cardinality_max}"
+        self._card_label.setPlainText(card_text)
+
+        # Get text bounding rect for background sizing
+        text_rect = self._card_label.boundingRect()
+        padding = 3
+
+        # Position the background rectangle
+        bg_width = text_rect.width() + padding * 2
+        bg_height = text_rect.height()
+        self._card_bg.setRect(
+            label_x - bg_width / 2,
+            label_y - bg_height / 2,
+            bg_width,
+            bg_height
+        )
+
+        # Position the text centered on the background
+        self._card_label.setPos(
+            label_x - text_rect.width() / 2,
+            label_y - text_rect.height() / 2
+        )
 
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: QWidget = None):
         if self.isSelected():
-            self.setPen(QPen(QColor(SELECTED_COLOR), 3))
+            self.setPen(QPen(QColor(SELECTED_COLOR), 2))
         else:
-            self.setPen(QPen(QColor(LINK_COLOR), 2))
+            self.setPen(QPen(QColor(LINK_COLOR), 1))
         super().paint(painter, option, widget)
 
     def cleanup(self):

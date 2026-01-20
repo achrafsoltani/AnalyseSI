@@ -122,6 +122,12 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
+        properties_action = QAction("Project &Properties...", self)
+        properties_action.triggered.connect(self._on_project_properties)
+        file_menu.addAction(properties_action)
+
+        file_menu.addSeparator()
+
         exit_action = QAction("E&xit", self)
         exit_action.setShortcut(QKeySequence.Quit)
         exit_action.triggered.connect(self.close)
@@ -182,14 +188,23 @@ class MainWindow(QMainWindow):
     def _update_title(self):
         """Update window title based on project state."""
         title = f"{APP_NAME} {APP_VERSION}"
-        if self._project.file_path:
-            title += f" - {self._project.file_path}"
+        # Show project name instead of full path
+        title += f" - {self._project.name}"
         if self._project.modified:
             title += " *"
         self.setWindowTitle(title)
+        # Update status bar with full path
+        self._update_path_status()
+
+    def _update_path_status(self):
+        """Update status bar with file path."""
+        if self._project.file_path:
+            self._status_label.setText(f"File: {self._project.file_path}")
+        else:
+            self._status_label.setText("New project (not saved)")
 
     def _update_status(self, message: str):
-        """Update status bar message."""
+        """Update status bar message temporarily."""
         self._status_label.setText(message)
 
     def _on_modified(self):
@@ -269,6 +284,7 @@ class MainWindow(QMainWindow):
 
     def _on_save_as(self) -> bool:
         """Save the project with a new name."""
+        import os
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Save Project", "", FILE_FILTER
         )
@@ -277,6 +293,10 @@ class MainWindow(QMainWindow):
             # Ensure correct extension
             if not file_path.endswith(".asip"):
                 file_path += ".asip"
+
+            # Set project name from filename (without extension)
+            basename = os.path.basename(file_path)
+            self._project.name = os.path.splitext(basename)[0]
 
             if FileIO.save_project(self._project, file_path):
                 self._update_title()
@@ -343,16 +363,41 @@ class MainWindow(QMainWindow):
         self._tabs.setCurrentIndex(2)  # Switch to SQL tab
         self._update_status("SQL generated")
 
+    def _on_project_properties(self):
+        """Show project properties dialog."""
+        from .dialogs.project_properties_dialog import ProjectPropertiesDialog
+
+        dialog = ProjectPropertiesDialog(self._project, parent=self)
+        if dialog.exec():
+            dialog.apply_to_project()
+            self._project.modified = True
+            self._update_title()
+            self._update_status("Project properties updated")
+
     def _on_about(self):
         """Show about dialog."""
-        QMessageBox.about(
-            self,
-            f"About {APP_NAME}",
-            f"<h3>{APP_NAME} {APP_VERSION}</h3>"
+        from PySide6.QtWidgets import QSpacerItem, QSizePolicy
+
+        msgbox = QMessageBox(self)
+        msgbox.setWindowTitle(f"About {APP_NAME}")
+        msgbox.setText(
+            f"<h2>{APP_NAME}</h2>"
+            f"<p><b>Version {APP_VERSION}</b></p>"
+        )
+        msgbox.setInformativeText(
             "<p>A modern MERISE database modeling tool.</p>"
             "<p>Built with Python and PySide6.</p>"
-            "<p>Based on the AnalyseSI project.</p>"
+            "<p>Based on the original AnalyseSI project.</p>"
+            "<br>"
+            "<p><b>Author:</b> Achraf SOLTANI</p>"
         )
+
+        # Make dialog wider
+        spacer = QSpacerItem(450, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        layout = msgbox.layout()
+        layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
+
+        msgbox.exec()
 
     def closeEvent(self, event):
         """Handle window close event."""

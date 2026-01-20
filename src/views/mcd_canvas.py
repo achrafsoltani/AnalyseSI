@@ -450,8 +450,12 @@ class MCDCanvas(QGraphicsView):
             super().wheelEvent(event)
 
     def toggle_show_attributes(self, show: bool):
-        """Toggle showing attributes in entity items."""
+        """Toggle showing attributes in entity and association items."""
         EntityItem.show_attributes = show
+        AssociationItem.show_attributes = show
         # Refresh all entity items
         for item in self._entity_items.values():
+            item.refresh()
+        # Refresh all association items
+        for item in self._association_items.values():
             item.refresh()
