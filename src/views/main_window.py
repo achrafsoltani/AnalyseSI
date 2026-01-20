@@ -12,6 +12,7 @@ from ..utils.file_io import FileIO
 from ..controllers.mcd_controller import MCDController
 from .dictionary_view import DictionaryView
 from .mcd_canvas import MCDCanvas
+from .mld_view import MLDView
 from .sql_view import SQLView
 
 
@@ -43,7 +44,8 @@ class MainWindow(QMainWindow):
         # MCD tab
         mcd_widget = QWidget()
         mcd_layout = QVBoxLayout(mcd_widget)
-        mcd_layout.setContentsMargins(0, 0, 0, 0)
+        mcd_layout.setContentsMargins(8, 8, 8, 8)
+        mcd_layout.setSpacing(8)
 
         # MCD toolbar
         mcd_toolbar = QHBoxLayout()
@@ -80,6 +82,10 @@ class MainWindow(QMainWindow):
         mcd_layout.addWidget(self._mcd_canvas)
 
         self._tabs.addTab(mcd_widget, "MCD")
+
+        # MLD tab
+        self._mld_view = MLDView(self._project)
+        self._tabs.addTab(self._mld_view, "MLD")
 
         # SQL tab
         self._sql_view = SQLView(self._project)
@@ -154,9 +160,14 @@ class MainWindow(QMainWindow):
         mcd_action.triggered.connect(lambda: self._tabs.setCurrentIndex(1))
         view_menu.addAction(mcd_action)
 
+        mld_action = QAction("M&LD", self)
+        mld_action.setShortcut("Ctrl+3")
+        mld_action.triggered.connect(lambda: self._tabs.setCurrentIndex(2))
+        view_menu.addAction(mld_action)
+
         sql_action = QAction("&SQL", self)
-        sql_action.setShortcut("Ctrl+3")
-        sql_action.triggered.connect(lambda: self._tabs.setCurrentIndex(2))
+        sql_action.setShortcut("Ctrl+4")
+        sql_action.triggered.connect(lambda: self._tabs.setCurrentIndex(3))
         view_menu.addAction(sql_action)
 
         # Help menu
@@ -170,6 +181,7 @@ class MainWindow(QMainWindow):
         """Set up the main toolbar."""
         toolbar = QToolBar("Main Toolbar")
         toolbar.setIconSize(QSize(24, 24))
+        toolbar.setMovable(False)
         self.addToolBar(toolbar)
 
         # File actions
@@ -178,12 +190,10 @@ class MainWindow(QMainWindow):
         toolbar.addAction("Save").triggered.connect(self._on_save)
         toolbar.addSeparator()
 
-        # Generation
-        toolbar.addAction("Generate SQL").triggered.connect(self._on_generate_sql)
-
     def _connect_signals(self):
         """Connect signals between components."""
         self._mcd_canvas.modified.connect(self._on_modified)
+        self._tabs.currentChanged.connect(self._on_tab_changed)
 
     def _update_title(self):
         """Update window title based on project state."""
@@ -214,6 +224,13 @@ class MainWindow(QMainWindow):
         # Refresh dictionary view since attributes now come from entities
         self._dictionary_view.refresh()
 
+    def _on_tab_changed(self, index: int):
+        """Handle tab change - auto-generate MLD/SQL."""
+        if index == 2:  # MLD tab
+            self._mld_view.generate_mld()
+        elif index == 3:  # SQL tab
+            self._sql_view.generate_sql()
+
     def _check_save(self) -> bool:
         """Check if user wants to save unsaved changes. Returns True to proceed."""
         if not self._project.modified:
@@ -241,6 +258,7 @@ class MainWindow(QMainWindow):
         self._project = Project()
         self._dictionary_view.set_project(self._project)
         self._mcd_canvas.set_project(self._project)
+        self._mld_view.set_project(self._project)
         self._sql_view.set_project(self._project)
         self._update_title()
         self._update_status("New project created")
@@ -260,6 +278,7 @@ class MainWindow(QMainWindow):
                 self._project = project
                 self._dictionary_view.set_project(self._project)
                 self._mcd_canvas.set_project(self._project)
+                self._mld_view.set_project(self._project)
                 self._sql_view.set_project(self._project)
                 self._update_title()
                 self._update_status(f"Opened: {file_path}")
@@ -356,12 +375,6 @@ class MainWindow(QMainWindow):
         layout = msgbox.layout()
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
         msgbox.exec()
-
-    def _on_generate_sql(self):
-        """Generate SQL and switch to SQL tab."""
-        self._sql_view.generate_sql()
-        self._tabs.setCurrentIndex(2)  # Switch to SQL tab
-        self._update_status("SQL generated")
 
     def _on_project_properties(self):
         """Show project properties dialog."""

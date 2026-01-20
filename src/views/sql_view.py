@@ -80,14 +80,11 @@ class SQLView(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
 
         # Toolbar
         toolbar = QHBoxLayout()
-
-        self._generate_btn = QPushButton("Generate SQL")
-        self._generate_btn.clicked.connect(self.generate_sql)
-        toolbar.addWidget(self._generate_btn)
 
         self._copy_btn = QPushButton("Copy to Clipboard")
         self._copy_btn.clicked.connect(self._copy_to_clipboard)

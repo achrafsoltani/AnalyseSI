@@ -37,13 +37,6 @@ class EntityDialog(QDialog):
     def _setup_ui(self):
         self.setWindowTitle("Edit Entity" if self._is_edit else "Add Entity")
         self.setMinimumSize(550, 450)
-        self.setStyleSheet("""
-            QDialog {
-                border: 2px solid #3daee9;
-                border-radius: 6px;
-                background-color: palette(window);
-            }
-        """)
 
         layout = QVBoxLayout(self)
 
@@ -273,13 +266,6 @@ class AttributeEditDialog(QDialog):
     def _setup_ui(self):
         self.setWindowTitle("Edit Attribute" if self._attribute else "Add Attribute")
         self.setMinimumWidth(400)
-        self.setStyleSheet("""
-            QDialog {
-                border: 2px solid #3daee9;
-                border-radius: 6px;
-                background-color: palette(window);
-            }
-        """)
 
         layout = QVBoxLayout(self)
         form = QFormLayout()
