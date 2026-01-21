@@ -7,7 +7,7 @@ import platform
 import subprocess
 import shutil
 
-APP_NAME = "AnalyseSI"
+APP_NAME = "Merisio"
 VERSION = "1.0.0"
 
 

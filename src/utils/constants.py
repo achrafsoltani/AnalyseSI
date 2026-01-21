@@ -1,9 +1,9 @@
 # Application constants
 
-APP_NAME = "AnalyseSI Modern"
+APP_NAME = "Merisio"
 APP_VERSION = "1.0.0"
-FILE_EXTENSION = ".asip"
-FILE_FILTER = "AnalyseSI Projects (*.asip);;All Files (*)"
+FILE_EXTENSION = ".merisio"
+FILE_FILTER = "Merisio Projects (*.merisio);;All Files (*)"
 
 # Data types for dictionary
 DATA_TYPES = [

@@ -26,7 +26,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName("AnalyseSI")
-    app.setDesktopFileName("analysesi")
+    app.setDesktopFileName("merisio")
 
     # Set application icon
     icon_path = os.path.join(os.path.dirname(__file__), "resources", "icons", "app_icon.svg")

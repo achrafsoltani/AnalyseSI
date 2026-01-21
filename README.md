@@ -1,4 +1,4 @@
-# AnalyseSI Modern
+# Merisio
 
 A modern MERISE database modeling tool built with Python and PySide6.
 
@@ -8,7 +8,7 @@ A modern MERISE database modeling tool built with Python and PySide6.
 - **Data Dictionary** - Overview of all attributes across entities
 - **MLD View** - Logical Data Model with table/column tree view
 - **SQL Generation** - PostgreSQL CREATE TABLE statements
-- **Project Management** - Save/load projects (.asip format)
+- **Project Management** - Save/load projects (.merisio format)
 
 ## Screenshots
 
@@ -25,8 +25,8 @@ A modern MERISE database modeling tool built with Python and PySide6.
 
 ```bash
 # Clone the repository
-git clone https://github.com/AchrafSoltani/AnalyseSI.git
-cd AnalyseSI
+git clone https://github.com/AchrafSoltani/Merisio.git
+cd Merisio
 
 # Create virtual environment
 python3 -m venv venv
@@ -42,7 +42,7 @@ python main.py
 
 ### Pre-built Binaries
 
-Download the latest release from the [Releases](https://github.com/AchrafSoltani/AnalyseSI/releases) page.
+Download the latest release from the [Releases](https://github.com/AchrafSoltani/Merisio/releases) page.
 
 ## Building from Source
 
@@ -62,7 +62,7 @@ source venv/bin/activate
 # Build
 python build.py build
 
-# Output: dist/AnalyseSI (65 MB standalone executable)
+# Output: dist/Merisio (standalone executable)
 ```
 
 **Windows:**
@@ -76,7 +76,7 @@ python build.py ico
 # Build
 python build.py build
 
-# Output: dist\AnalyseSI.exe
+# Output: dist\Merisio.exe
 ```
 
 **Clean build files:**
@@ -90,16 +90,16 @@ python build.py clean
 
 ```bash
 # Create a tarball with all necessary files
-mkdir -p AnalyseSI-linux
-cp dist/AnalyseSI AnalyseSI-linux/
-cp resources/icons/app_icon.svg AnalyseSI-linux/
-cp analysesi.desktop AnalyseSI-linux/
-tar -czvf AnalyseSI-1.0.0-linux-x64.tar.gz AnalyseSI-linux
+mkdir -p Merisio-linux
+cp dist/Merisio Merisio-linux/
+cp resources/icons/app_icon.svg Merisio-linux/
+cp merisio.desktop Merisio-linux/
+tar -czvf Merisio-1.0.0-linux-x64.tar.gz Merisio-linux
 ```
 
 Users can then:
 1. Extract the archive
-2. Run `./AnalyseSI`
+2. Run `./Merisio`
 3. Optionally install the .desktop file for system integration
 
 ### Windows
