@@ -28,6 +28,10 @@ class MCDCanvas(QGraphicsView):
         self._association_items: dict[str, AssociationItem] = {}
         self._link_items: dict[str, LinkItem] = {}
 
+        # Display options
+        self._show_attributes = True
+        self._link_style = "curved"  # "curved", "orthogonal", "straight"
+
         self._setup_view()
         self._context_pos = QPointF(0, 0)
 
@@ -449,8 +453,9 @@ class MCDCanvas(QGraphicsView):
         else:
             super().wheelEvent(event)
 
-    def toggle_show_attributes(self, show: bool):
+    def set_show_attributes(self, show: bool):
         """Toggle showing attributes in entity and association items."""
+        self._show_attributes = show
         EntityItem.show_attributes = show
         AssociationItem.show_attributes = show
         # Refresh all entity items
@@ -459,3 +464,14 @@ class MCDCanvas(QGraphicsView):
         # Refresh all association items
         for item in self._association_items.values():
             item.refresh()
+        # Update all links (positions may change due to resized items)
+        for link_item in self._link_items.values():
+            link_item.update_position()
+
+    def set_link_style(self, style: str):
+        """Set the link style: 'curved', 'orthogonal', or 'straight'."""
+        self._link_style = style
+        LinkItem.link_style = style
+        # Update all link items
+        for link_item in self._link_items.values():
+            link_item.update_position()

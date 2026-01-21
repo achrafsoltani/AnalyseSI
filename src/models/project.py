@@ -25,6 +25,9 @@ class Project:
         self.created_at: str = datetime.now().isoformat()
         self.modified_at: str = self.created_at
 
+        # MLD customizations: {"TABLE.original_col": "new_col_name"}
+        self._mld_column_overrides: Dict[str, str] = {}
+
     # Entity operations
     def add_entity(self, entity: Entity) -> None:
         """Add an entity to the project."""
@@ -135,6 +138,25 @@ class Project:
                 result.append((entity.name, attr))
         return result
 
+    # MLD column overrides
+    def set_mld_column_name(self, table_name: str, original_name: str, new_name: str) -> None:
+        """Set a custom column name for the MLD."""
+        key = f"{table_name}.{original_name}"
+        if new_name and new_name != original_name:
+            self._mld_column_overrides[key] = new_name
+        elif key in self._mld_column_overrides:
+            del self._mld_column_overrides[key]
+        self.modified = True
+
+    def get_mld_column_name(self, table_name: str, original_name: str) -> str:
+        """Get the (possibly overridden) column name for the MLD."""
+        key = f"{table_name}.{original_name}"
+        return self._mld_column_overrides.get(key, original_name)
+
+    def get_all_mld_overrides(self) -> Dict[str, str]:
+        """Get all MLD column overrides."""
+        return self._mld_column_overrides.copy()
+
     # Serialization
     def to_dict(self) -> dict:
         """Convert project to dictionary for JSON serialization."""
@@ -152,6 +174,9 @@ class Project:
                 "entities": [e.to_dict() for e in self._entities.values()],
                 "associations": [a.to_dict() for a in self._associations.values()],
                 "links": [l.to_dict() for l in self._links.values()]
+            },
+            "mld": {
+                "column_overrides": self._mld_column_overrides
             }
         }
 
@@ -183,6 +208,10 @@ class Project:
             link = Link.from_dict(link_data)
             project._links[link.id] = link
 
+        # Load MLD customizations
+        mld = data.get("mld", {})
+        project._mld_column_overrides = mld.get("column_overrides", {})
+
         project.modified = False
         return project
 
@@ -191,5 +220,6 @@ class Project:
         self._entities.clear()
         self._associations.clear()
         self._links.clear()
+        self._mld_column_overrides.clear()
         self.file_path = None
         self.modified = False

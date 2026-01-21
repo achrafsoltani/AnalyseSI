@@ -177,6 +177,38 @@ class MainWindow(QMainWindow):
         sql_action.triggered.connect(lambda: self._tabs.setCurrentIndex(3))
         view_menu.addAction(sql_action)
 
+        # Options menu
+        options_menu = menubar.addMenu("&Options")
+
+        self._show_attributes_action = QAction("Show &Attributes", self)
+        self._show_attributes_action.setCheckable(True)
+        self._show_attributes_action.setChecked(True)
+        self._show_attributes_action.triggered.connect(self._on_toggle_attributes)
+        options_menu.addAction(self._show_attributes_action)
+
+        options_menu.addSeparator()
+
+        # Link style submenu
+        link_style_menu = options_menu.addMenu("Link Style")
+
+        self._curved_links_action = QAction("&Curved", self)
+        self._curved_links_action.setCheckable(True)
+        self._curved_links_action.setChecked(True)
+        self._curved_links_action.triggered.connect(lambda: self._on_link_style_changed("curved"))
+        link_style_menu.addAction(self._curved_links_action)
+
+        self._orthogonal_links_action = QAction("&Orthogonal", self)
+        self._orthogonal_links_action.setCheckable(True)
+        self._orthogonal_links_action.setChecked(False)
+        self._orthogonal_links_action.triggered.connect(lambda: self._on_link_style_changed("orthogonal"))
+        link_style_menu.addAction(self._orthogonal_links_action)
+
+        self._straight_links_action = QAction("&Straight", self)
+        self._straight_links_action.setCheckable(True)
+        self._straight_links_action.setChecked(False)
+        self._straight_links_action.triggered.connect(lambda: self._on_link_style_changed("straight"))
+        link_style_menu.addAction(self._straight_links_action)
+
         # Help menu
         help_menu = menubar.addMenu("&Help")
 
@@ -200,6 +232,7 @@ class MainWindow(QMainWindow):
     def _connect_signals(self):
         """Connect signals between components."""
         self._mcd_canvas.modified.connect(self._on_modified)
+        self._mld_view.mld_modified.connect(self._on_modified)
         self._tabs.currentChanged.connect(self._on_tab_changed)
 
     def _update_title(self):
@@ -417,6 +450,19 @@ class MainWindow(QMainWindow):
         layout.addItem(spacer, layout.rowCount(), 0, 1, layout.columnCount())
 
         msgbox.exec()
+
+    def _on_toggle_attributes(self, checked: bool):
+        """Toggle attribute visibility in MCD."""
+        self._mcd_canvas.set_show_attributes(checked)
+
+    def _on_link_style_changed(self, style: str):
+        """Change link style in MCD."""
+        # Update checkmarks
+        self._curved_links_action.setChecked(style == "curved")
+        self._orthogonal_links_action.setChecked(style == "orthogonal")
+        self._straight_links_action.setChecked(style == "straight")
+        # Apply to canvas
+        self._mcd_canvas.set_link_style(style)
 
     def closeEvent(self, event):
         """Handle window close event."""

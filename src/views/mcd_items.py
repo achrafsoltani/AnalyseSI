@@ -340,7 +340,10 @@ class AssociationItem(QGraphicsItem):
 
 
 class LinkItem(QGraphicsPathItem):
-    """Graphical representation of a link between entity and association using Bezier curves."""
+    """Graphical representation of a link between entity and association."""
+
+    # Class-level setting for link style
+    link_style = "curved"  # "curved", "orthogonal", "straight"
 
     def __init__(
         self,
@@ -383,7 +386,7 @@ class LinkItem(QGraphicsPathItem):
         self.update_position()
 
     def update_position(self):
-        """Update curve position based on connected items."""
+        """Update link position based on connected items and current style."""
         # Get centers first to calculate direction
         entity_center = self.entity_item.get_center()
         assoc_center = self.association_item.get_center()
@@ -392,37 +395,69 @@ class LinkItem(QGraphicsPathItem):
         self._p1 = self.entity_item.get_edge_point(assoc_center)
         self._p2 = self.association_item.get_edge_point(entity_center)
 
-        # Calculate control point for quadratic Bezier curve
-        # Midpoint between the two endpoints
+        # Calculate midpoint
         mid_x = (self._p1.x() + self._p2.x()) / 2
         mid_y = (self._p1.y() + self._p2.y()) / 2
 
-        # Calculate perpendicular offset for curve
-        dx = self._p2.x() - self._p1.x()
-        dy = self._p2.y() - self._p1.y()
-        length = math.sqrt(dx * dx + dy * dy)
-
-        if length > 0:
-            # Perpendicular vector (normalized)
-            perp_x = -dy / length
-            perp_y = dx / length
-            # Curve amount (proportional to distance, but capped)
-            curve_amount = min(length * 0.15, 30)
-            self._control = QPointF(mid_x + perp_x * curve_amount, mid_y + perp_y * curve_amount)
-        else:
-            self._control = QPointF(mid_x, mid_y)
-
-        # Create the Bezier path
+        # Create path based on style
         path = QPainterPath()
         path.moveTo(self._p1)
-        path.quadTo(self._control, self._p2)
+
+        if LinkItem.link_style == "straight":
+            # Simple straight line
+            path.lineTo(self._p2)
+            self._control = QPointF(mid_x, mid_y)
+
+        elif LinkItem.link_style == "orthogonal":
+            # Orthogonal (right-angle) path
+            # Determine if horizontal or vertical first based on angle
+            dx = self._p2.x() - self._p1.x()
+            dy = self._p2.y() - self._p1.y()
+
+            if abs(dx) > abs(dy):
+                # Go horizontal first, then vertical
+                mid_point = QPointF(mid_x, self._p1.y())
+                path.lineTo(mid_point)
+                path.lineTo(QPointF(mid_x, self._p2.y()))
+                path.lineTo(self._p2)
+            else:
+                # Go vertical first, then horizontal
+                mid_point = QPointF(self._p1.x(), mid_y)
+                path.lineTo(mid_point)
+                path.lineTo(QPointF(self._p2.x(), mid_y))
+                path.lineTo(self._p2)
+            self._control = QPointF(mid_x, mid_y)
+
+        else:  # "curved" (default)
+            # Quadratic Bezier curve
+            dx = self._p2.x() - self._p1.x()
+            dy = self._p2.y() - self._p1.y()
+            length = math.sqrt(dx * dx + dy * dy)
+
+            if length > 0:
+                # Perpendicular vector (normalized)
+                perp_x = -dy / length
+                perp_y = dx / length
+                # Curve amount (proportional to distance, but capped)
+                curve_amount = min(length * 0.15, 30)
+                self._control = QPointF(mid_x + perp_x * curve_amount, mid_y + perp_y * curve_amount)
+            else:
+                self._control = QPointF(mid_x, mid_y)
+
+            path.quadTo(self._control, self._p2)
+
         self.setPath(path)
 
-        # Position cardinality label near entity edge along the curve
-        # Use a point on the Bezier curve at t=0.2
+        # Position cardinality label near entity edge
+        # For curved: use point on Bezier at t=0.2
+        # For others: use point 20% along the path
         t = 0.2
-        label_x = (1-t)*(1-t)*self._p1.x() + 2*(1-t)*t*self._control.x() + t*t*self._p2.x()
-        label_y = (1-t)*(1-t)*self._p1.y() + 2*(1-t)*t*self._control.y() + t*t*self._p2.y()
+        if LinkItem.link_style == "curved":
+            label_x = (1-t)*(1-t)*self._p1.x() + 2*(1-t)*t*self._control.x() + t*t*self._p2.x()
+            label_y = (1-t)*(1-t)*self._p1.y() + 2*(1-t)*t*self._control.y() + t*t*self._p2.y()
+        else:
+            label_x = self._p1.x() + t * (self._p2.x() - self._p1.x())
+            label_y = self._p1.y() + t * (self._p2.y() - self._p1.y())
 
         card_text = f"{self.link.cardinality_min},{self.link.cardinality_max}"
         self._card_label.setPlainText(card_text)

@@ -1,9 +1,9 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget, QTreeWidgetItem,
-    QPushButton, QLabel, QHeaderView
+    QPushButton, QLabel, QHeaderView, QMenu, QInputDialog
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QColor, QBrush
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFont, QColor, QBrush, QAction
 
 from ..models.project import Project
 from ..controllers.mld_transformer import MLDTransformer
@@ -12,10 +12,14 @@ from ..controllers.mld_transformer import MLDTransformer
 class MLDView(QWidget):
     """View for displaying the Logical Data Model (MLD)."""
 
+    # Signal emitted when MLD is modified
+    mld_modified = Signal()
+
     def __init__(self, project: Project, parent=None):
         super().__init__(parent)
         self._project = project
         self._setup_ui()
+        self._connect_signals()
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -45,16 +49,19 @@ class MLDView(QWidget):
         self._tree.setHeaderLabels(["Name", "Type", "Constraints", "References"])
         self._tree.setAlternatingRowColors(True)
         self._tree.setRootIsDecorated(True)
+        self._tree.setIndentation(20)
+        self._tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._tree.customContextMenuRequested.connect(self._show_context_menu)
 
         # Configure header
         header = self._tree.header()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.Interactive)
         header.setSectionResizeMode(1, QHeaderView.Interactive)
         header.setSectionResizeMode(2, QHeaderView.Interactive)
-        header.setSectionResizeMode(3, QHeaderView.Interactive)
-        header.resizeSection(1, 120)
-        header.resizeSection(2, 150)
-        header.resizeSection(3, 200)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
+        header.resizeSection(0, 250)
+        header.resizeSection(1, 100)
+        header.resizeSection(2, 120)
 
         # Set font
         font = QFont()
@@ -67,6 +74,57 @@ class MLDView(QWidget):
         self._stats_label = QLabel()
         self._stats_label.setStyleSheet("color: gray;")
         layout.addWidget(self._stats_label)
+
+        # Hint label
+        hint_label = QLabel("Right-click a column to rename it")
+        hint_label.setStyleSheet("color: gray; font-style: italic;")
+        layout.addWidget(hint_label)
+
+    def _connect_signals(self):
+        """Connect signals."""
+        self._tree.itemDoubleClicked.connect(self._on_item_double_clicked)
+
+    def _show_context_menu(self, position):
+        """Show context menu for renaming columns."""
+        item = self._tree.itemAt(position)
+        if not item or not item.parent():
+            return  # Only show menu for column items (not table headers)
+
+        menu = QMenu(self)
+        rename_action = QAction("Rename Column", self)
+        rename_action.triggered.connect(lambda: self._rename_column(item))
+        menu.addAction(rename_action)
+        menu.exec(self._tree.viewport().mapToGlobal(position))
+
+    def _on_item_double_clicked(self, item: QTreeWidgetItem, column: int):
+        """Handle double-click to rename."""
+        if item.parent() and column == 0:
+            self._rename_column(item)
+
+    def _rename_column(self, item: QTreeWidgetItem):
+        """Rename a column via dialog."""
+        parent = item.parent()
+        if not parent:
+            return
+
+        table_name = parent.text(0)
+        original_name = item.data(0, Qt.UserRole)
+        current_name = item.text(0)
+
+        dialog = QInputDialog(self)
+        dialog.setWindowTitle("Rename Column")
+        dialog.setLabelText(f"Enter new name for column '{current_name}':")
+        dialog.setTextValue(current_name)
+        dialog.resize(400, dialog.sizeHint().height())
+
+        if dialog.exec() and dialog.textValue().strip() != current_name:
+            new_name = dialog.textValue().strip()
+            if new_name:
+                # Update the display
+                item.setText(0, new_name)
+                # Save the override
+                self._project.set_mld_column_name(table_name, original_name, new_name)
+                self.mld_modified.emit()
 
     def set_project(self, project: Project):
         """Set a new project."""
@@ -120,7 +178,13 @@ class MLDView(QWidget):
             for column in table.columns:
                 column_count += 1
                 col_item = QTreeWidgetItem()
-                col_item.setText(0, column.name)
+
+                # Get display name (may be overridden)
+                original_name = column.name
+                display_name = self._project.get_mld_column_name(table.name.upper(), original_name)
+
+                col_item.setText(0, display_name)
+                col_item.setData(0, Qt.UserRole, original_name)  # Store original for reference
                 col_item.setText(1, column.data_type)
 
                 # Build constraints string
