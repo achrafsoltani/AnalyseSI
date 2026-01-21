@@ -24,7 +24,8 @@ A modern MERISE database modeling tool built with Python and PySide6.
 
 ## Screenshots
 
-*(Add screenshots here)*
+![MCD Editor](resources/screenshots/mcd-editor.png)
+*MCD Editor - First screenshot of Merisio v1.0.0 (January 21, 2026)*
 
 ## Requirements
 
