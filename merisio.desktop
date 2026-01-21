@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Merisio
 Comment=MERISE database modeling tool
-Exec=/home/achraf/Documents/GolandProjects/AchrafSoltani/AnalyseSI/venv/bin/python /home/achraf/Documents/GolandProjects/AchrafSoltani/AnalyseSI/main.py
+Exec=/home/achraf/Documents/GolandProjects/AchrafSoltani/Merisio/venv/bin/python /home/achraf/Documents/GolandProjects/AchrafSoltani/Merisio/main.py
 Icon=merisio
 Terminal=false
 Type=Application

@@ -44,7 +44,7 @@ def build():
         sys.executable, '-m', 'PyInstaller',
         '--clean',
         '--noconfirm',
-        'analysesi.spec'
+        'merisio.spec'
     ]
 
     print(f"Running: {' '.join(cmd)}")
