@@ -163,4 +163,4 @@ cython_debug/
 .idea/
 
 # Java Legacy version (used for codeanalysis)
-java_legacy
+java_legacy*.local.md
