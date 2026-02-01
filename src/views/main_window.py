@@ -27,6 +27,7 @@ class MainWindow(QMainWindow):
         self._setup_menus()
         self._setup_toolbar()
         self._connect_signals()
+        self._mcd_canvas.apply_colors(self._project.colors)
         self._update_title()
 
     def _setup_ui(self):
@@ -318,6 +319,12 @@ class MainWindow(QMainWindow):
         self._straight_links_action.triggered.connect(lambda: self._on_link_style_changed("straight"))
         link_style_menu.addAction(self._straight_links_action)
 
+        options_menu.addSeparator()
+
+        colors_action = QAction("Diagram &Colors...", self)
+        colors_action.triggered.connect(self._on_diagram_colors)
+        options_menu.addAction(colors_action)
+
         # Help menu
         help_menu = menubar.addMenu("&Help")
 
@@ -408,6 +415,7 @@ class MainWindow(QMainWindow):
         self._project = Project()
         self._dictionary_view.set_project(self._project)
         self._mcd_canvas.set_project(self._project)
+        self._mcd_canvas.apply_colors(self._project.colors)
         self._mld_view.set_project(self._project)
         self._sql_view.set_project(self._project)
         self._update_title()
@@ -428,6 +436,7 @@ class MainWindow(QMainWindow):
                 self._project = project
                 self._dictionary_view.set_project(self._project)
                 self._mcd_canvas.set_project(self._project)
+                self._mcd_canvas.apply_colors(self._project.colors)
                 self._mld_view.set_project(self._project)
                 self._sql_view.set_project(self._project)
                 self._update_title()
@@ -612,6 +621,18 @@ class MainWindow(QMainWindow):
         self._straight_links_action.setChecked(style == "straight")
         # Apply to canvas
         self._mcd_canvas.set_link_style(style)
+
+    def _on_diagram_colors(self):
+        """Show diagram colors dialog."""
+        from .dialogs.color_settings_dialog import ColorSettingsDialog
+
+        dialog = ColorSettingsDialog(self._project, parent=self)
+        if dialog.exec():
+            dialog.apply_to_project()
+            self._mcd_canvas.apply_colors(self._project.colors)
+            self._project.modified = True
+            self._update_title()
+            self._update_status("Diagram colors updated")
 
     def _on_zoom_in(self):
         """Zoom in on MCD canvas."""

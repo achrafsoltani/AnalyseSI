@@ -683,3 +683,19 @@ class MCDCanvas(QGraphicsView):
         # Update all link items
         for link_item in self._link_items.values():
             link_item.update_position()
+
+    def apply_colors(self, colors: dict):
+        """Apply color settings from project to all items."""
+        EntityItem.fill_color = colors.get("entity_fill", "#E3F2FD")
+        EntityItem.border_color = colors.get("entity_border", "#1976D2")
+        AssociationItem.fill_color = colors.get("association_fill", "#FFF3E0")
+        AssociationItem.border_color = colors.get("association_border", "#F57C00")
+        LinkItem.line_color = colors.get("link_color", "#000000")
+
+        # Refresh all items to apply new colors
+        for item in self._entity_items.values():
+            item.update()
+        for item in self._association_items.values():
+            item.update()
+        for item in self._link_items.values():
+            item.update()
