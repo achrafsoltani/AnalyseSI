@@ -28,6 +28,15 @@ class Project:
         # MLD customizations: {"TABLE.original_col": "new_col_name"}
         self._mld_column_overrides: Dict[str, str] = {}
 
+        # Diagram colors (defaults)
+        self.colors = {
+            "entity_fill": "#E3F2FD",
+            "entity_border": "#1976D2",
+            "association_fill": "#FFF3E0",
+            "association_border": "#F57C00",
+            "link_color": "#000000",
+        }
+
     # Entity operations
     def add_entity(self, entity: Entity) -> None:
         """Add an entity to the project."""
@@ -177,7 +186,8 @@ class Project:
             },
             "mld": {
                 "column_overrides": self._mld_column_overrides
-            }
+            },
+            "colors": self.colors
         }
 
     @classmethod
@@ -211,6 +221,10 @@ class Project:
         # Load MLD customizations
         mld = data.get("mld", {})
         project._mld_column_overrides = mld.get("column_overrides", {})
+
+        # Load colors (merge with defaults to handle missing keys)
+        saved_colors = data.get("colors", {})
+        project.colors.update(saved_colors)
 
         project.modified = False
         return project
