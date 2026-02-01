@@ -41,6 +41,9 @@ class MCDCanvas(QGraphicsView):
         # Zoom tracking
         self._zoom_level = 1.0
 
+        # Track item positions for move detection
+        self._drag_start_positions: dict[str, QPointF] = {}
+
         self._setup_view()
         self._context_pos = QPointF(0, 0)
 
@@ -433,6 +436,56 @@ class MCDCanvas(QGraphicsView):
             self.delete_selected()
         else:
             super().keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        """Track item positions before potential drag."""
+        self._drag_start_positions.clear()
+
+        # Track the item under cursor
+        item = self.itemAt(event.pos())
+        if isinstance(item, EntityItem):
+            self._drag_start_positions[item.entity.id] = QPointF(item.pos())
+        elif isinstance(item, AssociationItem):
+            self._drag_start_positions[item.association.id] = QPointF(item.pos())
+
+        # Also track already selected items
+        for sel_item in self._scene.selectedItems():
+            if isinstance(sel_item, EntityItem):
+                self._drag_start_positions[sel_item.entity.id] = QPointF(sel_item.pos())
+            elif isinstance(sel_item, AssociationItem):
+                self._drag_start_positions[sel_item.association.id] = QPointF(sel_item.pos())
+
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """Detect if items were moved and emit modified signal."""
+        super().mouseReleaseEvent(event)
+
+        if not self._drag_start_positions:
+            return
+
+        # Check if any tracked items moved
+        moved = False
+        for item in self._scene.items():
+            if isinstance(item, EntityItem):
+                item_id = item.entity.id
+                if item_id in self._drag_start_positions:
+                    start_pos = self._drag_start_positions[item_id]
+                    if item.pos().x() != start_pos.x() or item.pos().y() != start_pos.y():
+                        moved = True
+                        break
+            elif isinstance(item, AssociationItem):
+                item_id = item.association.id
+                if item_id in self._drag_start_positions:
+                    start_pos = self._drag_start_positions[item_id]
+                    if item.pos().x() != start_pos.x() or item.pos().y() != start_pos.y():
+                        moved = True
+                        break
+
+        if moved:
+            self.modified.emit()
+
+        self._drag_start_positions.clear()
 
     def mouseDoubleClickEvent(self, event):
         """Handle double-click to edit items."""
