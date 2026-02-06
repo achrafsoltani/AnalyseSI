@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QRectF, QPointF, QLineF
 from PySide6.QtGui import (
-    QPainter, QPen, QBrush, QColor, QFont, QPainterPath
+    QPainter, QPen, QBrush, QColor, QFont, QFontMetrics, QPainterPath
 )
 import math
 
@@ -46,23 +46,29 @@ class EntityItem(QGraphicsItem):
     def _update_size(self):
         """Update size based on content."""
         self.prepareGeometryChange()
+        # Measure entity name with bold font (as drawn)
+        bold_font = QFont()
+        bold_font.setBold(True)
+        fm_bold = QFontMetrics(bold_font)
+        name_width = fm_bold.horizontalAdvance(self.entity.name) + 20
+
         if EntityItem.show_attributes and self.entity.attributes:
-            self._width = max(self.MIN_WIDTH, self._calculate_width())
+            self._width = max(self.MIN_WIDTH, name_width, self._calculate_width())
             self._height = self.HEADER_HEIGHT + len(self.entity.attributes) * self.ATTR_HEIGHT + 10
         else:
-            self._width = self.MIN_WIDTH
+            self._width = max(self.MIN_WIDTH, name_width)
             self._height = ENTITY_HEIGHT
 
     def _calculate_width(self):
         """Calculate width based on longest attribute text."""
-        max_len = len(self.entity.name) * 8  # Approximate width for name
+        fm = QFontMetrics(QFont())
+        max_width = 0
         for attr in self.entity.attributes:
-            # Format: "name : TYPE" or with underline for PK
             attr_text = f"{attr.name} : {attr.data_type}"
             if attr.size:
                 attr_text += f"({attr.size})"
-            max_len = max(max_len, len(attr_text) * 7)
-        return max_len + 20  # padding
+            max_width = max(max_width, fm.horizontalAdvance(attr_text))
+        return max_width + 20  # padding
 
     def boundingRect(self) -> QRectF:
         return QRectF(-self._width / 2, -self._height / 2, self._width, self._height)
