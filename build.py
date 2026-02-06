@@ -8,7 +8,8 @@ import subprocess
 import shutil
 
 APP_NAME = "Merisio"
-VERSION = "1.1.0"
+CLI_NAME = "merisio-cli"
+VERSION = "1.2.0"
 
 
 def clean():
@@ -26,18 +27,21 @@ def clean():
                 os.remove(os.path.join(root, f))
 
 
-def build():
-    """Build the application."""
-    system = platform.system().lower()
-
-    print(f"Building {APP_NAME} v{VERSION} for {system}...")
-
-    # Ensure PyInstaller is installed
+def _ensure_pyinstaller():
+    """Ensure PyInstaller is installed."""
     try:
         import PyInstaller
     except ImportError:
         print("PyInstaller not found. Installing...")
         subprocess.run([sys.executable, '-m', 'pip', 'install', 'pyinstaller'])
+
+
+def build():
+    """Build the GUI application."""
+    system = platform.system().lower()
+
+    print(f"Building {APP_NAME} v{VERSION} for {system}...")
+    _ensure_pyinstaller()
 
     # Determine icon path
     if system == 'windows':
@@ -47,7 +51,6 @@ def build():
     else:
         icon_path = 'resources/icons/app_icon.png'
 
-    # Build command using CLI arguments (no spec file needed)
     cmd = [
         sys.executable, '-m', 'PyInstaller',
         '--clean',
@@ -62,11 +65,9 @@ def build():
         '--hidden-import', 'PySide6.QtWidgets',
     ]
 
-    # Add icon if exists
     if os.path.exists(icon_path):
         cmd.extend(['--icon', icon_path])
 
-    # Add main entry point
     cmd.append('main.py')
 
     print(f"Running: {' '.join(cmd)}")
@@ -75,16 +76,47 @@ def build():
     if result.returncode == 0:
         print(f"\nBuild successful!")
         print(f"Output: dist/{APP_NAME}")
-
-        if system == 'linux':
-            print(f"\nTo run: ./dist/{APP_NAME}")
-        elif system == 'windows':
-            print(f"\nTo run: dist\\{APP_NAME}.exe")
-        elif system == 'darwin':
-            print(f"\nTo run: open dist/{APP_NAME}.app")
     else:
         print("Build failed!")
         sys.exit(1)
+
+
+def build_cli():
+    """Build the CLI tool."""
+    system = platform.system().lower()
+
+    print(f"Building {CLI_NAME} v{VERSION} for {system}...")
+    _ensure_pyinstaller()
+
+    cmd = [
+        sys.executable, '-m', 'PyInstaller',
+        '--clean',
+        '--noconfirm',
+        '--onefile',
+        '--console',
+        '--name', CLI_NAME,
+        '--hidden-import', 'PySide6.QtCore',
+        '--hidden-import', 'PySide6.QtGui',
+        '--hidden-import', 'PySide6.QtWidgets',
+        '--hidden-import', 'PySide6.QtSvg',
+        'cli.py',
+    ]
+
+    print(f"Running: {' '.join(cmd)}")
+    result = subprocess.run(cmd)
+
+    if result.returncode == 0:
+        print(f"\nBuild successful!")
+        print(f"Output: dist/{CLI_NAME}")
+    else:
+        print("CLI build failed!")
+        sys.exit(1)
+
+
+def build_all():
+    """Build both GUI and CLI."""
+    build()
+    build_cli()
 
 
 def create_windows_ico():
@@ -119,10 +151,14 @@ if __name__ == '__main__':
             clean()
         elif cmd == 'build':
             build()
+        elif cmd == 'build-cli':
+            build_cli()
+        elif cmd == 'build-all':
+            build_all()
         elif cmd == 'ico':
             create_windows_ico()
         else:
             print(f"Unknown command: {cmd}")
-            print("Usage: python build.py [clean|build|ico]")
+            print("Usage: python build.py [clean|build|build-cli|build-all|ico]")
     else:
-        build()
+        build_all()
