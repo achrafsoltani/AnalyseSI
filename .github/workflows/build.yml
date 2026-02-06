@@ -8,7 +8,7 @@ on:
     branches: [main]
 
 env:
-  APP_VERSION: "1.1.0"
+  APP_VERSION: "1.2.0"
 
 jobs:
   build-linux:
@@ -27,13 +27,14 @@ jobs:
           sudo apt-get install -y libxcb-cursor0
           pip install -r requirements.txt pyinstaller
 
-      - name: Build executable
-        run: python build.py build
+      - name: Build GUI and CLI
+        run: python build.py build-all
 
       - name: Create release archive
         run: |
           mkdir -p Merisio-linux-x64
           cp dist/Merisio Merisio-linux-x64/
+          cp dist/merisio-cli Merisio-linux-x64/
           cp README.md Merisio-linux-x64/
           cp merisio.desktop Merisio-linux-x64/
           cp resources/icons/app_icon.png Merisio-linux-x64/
@@ -57,6 +58,9 @@ jobs:
            Merisio is a modern MERISE database modeling application.
            It allows you to create MCD diagrams, generate MLD views,
            and export SQL scripts for PostgreSQL databases.
+           .
+           Includes merisio-cli for headless validation, SQL generation,
+           MLD inspection, and diagram export from .merisio project files.
           Homepage: https://github.com/AchrafSoltani/Merisio
           EOF
 
@@ -65,6 +69,10 @@ jobs:
 
           cp dist/Merisio merisio-deb/usr/bin/merisio
           chmod 755 merisio-deb/usr/bin/merisio
+
+          cp dist/merisio-cli merisio-deb/usr/bin/merisio-cli
+          chmod 755 merisio-deb/usr/bin/merisio-cli
+
           cp resources/icons/app_icon.png merisio-deb/usr/share/icons/hicolor/256x256/apps/merisio.png
 
           cat > merisio-deb/usr/share/applications/merisio.desktop << EOF
@@ -109,13 +117,14 @@ jobs:
         run: |
           python -c "from PIL import Image; img = Image.open('resources/icons/app_icon.png'); img.save('resources/icons/app_icon.ico', format='ICO', sizes=[(256,256), (128,128), (64,64), (48,48), (32,32), (16,16)])"
 
-      - name: Build executable
-        run: python build.py build
+      - name: Build GUI and CLI
+        run: python build.py build-all
 
       - name: Create release archive
         run: |
           mkdir Merisio-windows-x64
           copy dist\Merisio.exe Merisio-windows-x64\
+          copy dist\merisio-cli.exe Merisio-windows-x64\
           copy README.md Merisio-windows-x64\
           Compress-Archive -Path Merisio-windows-x64 -DestinationPath Merisio-windows-x64.zip
 
