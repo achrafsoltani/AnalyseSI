@@ -9,7 +9,7 @@ import shutil
 
 APP_NAME = "Merisio"
 CLI_NAME = "merisio-cli"
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 
 def clean():
