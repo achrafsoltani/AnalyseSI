@@ -1,0 +1,171 @@
+.\" merisio-cli(1) - Merisio CLI tool man page
+.TH MERISIO-CLI 1 "2026-02-06" "Merisio 1.3.0" "User Commands"
+.SH NAME
+merisio-cli \- command-line interface for Merisio project files
+.SH SYNOPSIS
+.B merisio-cli
+.RB [ \-h | \-\-help ]
+.RB [ \-\-version ]
+.I file
+.I command
+.RI [ options ]
+.SH DESCRIPTION
+.B merisio-cli
+is a command-line tool for working with
+.B .merisio
+project files without launching the graphical editor. It can display project
+information, validate MCD models, generate PostgreSQL DDL, show the logical
+data model, and export diagrams to image formats.
+.PP
+It is intended for scripting, CI/CD pipelines, and batch processing.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Show help message and exit. Can also be used after a command name to show
+command-specific help (e.g.
+.BR "merisio-cli file.merisio export \-\-help" ).
+.TP
+.B \-\-version
+Show version number and exit.
+.SH COMMANDS
+.SS info
+Show project metadata and statistics.
+.PP
+.RS
+.B merisio-cli
+.I file
+.B info
+.RE
+.PP
+Displays the project name, author, description, creation and modification
+timestamps, and counts of entities, associations, links, and attributes.
+.SS validate
+Validate the MCD model.
+.PP
+.RS
+.B merisio-cli
+.I file
+.B validate
+.RE
+.PP
+Checks the model for errors. If any are found, they are printed to stdout
+and the process exits with code 1. If validation passes, a success message
+is printed and the process exits with code 0.
+.SS sql
+Generate PostgreSQL DDL.
+.PP
+.RS
+.B merisio-cli
+.I file
+.B sql
+.RB [ \-o
+.IR output ]
+.RE
+.TP
+.BR \-o ", " \-\-output " " \fIpath\fP
+Write SQL to a file instead of stdout.
+.SS mld
+Show the logical data model (MLD tables).
+.PP
+.RS
+.B merisio-cli
+.I file
+.B mld
+.RE
+.PP
+Prints all tables with their columns, primary keys, foreign keys, and
+nullability constraints.
+.SS export
+Export diagram to PNG, SVG, or PDF.
+.PP
+.RS
+.B merisio-cli
+.I file
+.B export
+.B \-\-format
+.IR fmt
+.B \-o
+.IR output
+.RB [ \-\-scale
+.IR factor ]
+.RE
+.TP
+.BR \-\-format " " \fIfmt\fP
+Export format. Must be one of:
+.BR png ", " svg ", " pdf .
+.TP
+.BR \-o ", " \-\-output " " \fIpath\fP
+Output file path (required).
+.TP
+.BR \-\-scale " " \fIfactor\fP
+Scale factor for PNG export. Default is 2.0. Ignored for SVG and PDF.
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Validation failed (one or more errors in the MCD model).
+.TP
+.B 2
+Runtime error (file not found, write failure, unsupported format, etc.).
+.SH EXAMPLES
+Show project information:
+.PP
+.RS
+.B merisio-cli project.merisio info
+.RE
+.PP
+Validate a model (useful in CI):
+.PP
+.RS
+.B merisio-cli project.merisio validate
+.RE
+.PP
+Generate SQL to stdout:
+.PP
+.RS
+.B merisio-cli project.merisio sql
+.RE
+.PP
+Generate SQL to a file:
+.PP
+.RS
+.B merisio-cli project.merisio sql -o schema.sql
+.RE
+.PP
+View the MLD tables:
+.PP
+.RS
+.B merisio-cli project.merisio mld
+.RE
+.PP
+Export a high-resolution PNG:
+.PP
+.RS
+.B merisio-cli project.merisio export --format png -o diagram.png --scale 3.0
+.RE
+.PP
+Export an SVG:
+.PP
+.RS
+.B merisio-cli project.merisio export --format svg -o diagram.svg
+.RE
+.PP
+Export a PDF:
+.PP
+.RS
+.B merisio-cli project.merisio export --format pdf -o diagram.pdf
+.RE
+.SH FILE FORMAT
+See
+.BR merisio (1)
+for a description of the
+.B .merisio
+project file format.
+.SH SEE ALSO
+.BR merisio (1)
+.SH AUTHOR
+Achraf Soltani <achraf.soltani@pm.me>
+.SH LICENSE
+GNU General Public License v2.

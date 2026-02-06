@@ -1,0 +1,79 @@
+.\" merisio(1) - Merisio GUI application man page
+.TH MERISIO 1 "2026-02-06" "Merisio 1.3.0" "User Commands"
+.SH NAME
+merisio \- a modern MERISE database modeling tool
+.SH SYNOPSIS
+.B merisio
+.RB [ \-h | \-\-help ]
+.RB [ \-v | \-\-version ]
+.SH DESCRIPTION
+.B Merisio
+is a graphical MERISE database modeling application built with Python and
+PySide6. It provides a visual editor for creating and editing Conceptual Data
+Models (MCD), viewing the derived Logical Data Model (MLD), and generating
+PostgreSQL DDL statements.
+.PP
+When launched without arguments, the graphical editor opens.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a brief usage summary and exit.
+.TP
+.BR \-v ", " \-\-version
+Print the version number and exit.
+.SH FEATURES
+.TP
+.B MCD Editor
+Visual diagram editor for entities, associations, and links with
+drag-and-drop positioning, multi-selection, cardinalities (0,1), (0,N),
+(1,1), (1,N), and configurable link styles (curved, orthogonal, straight).
+.TP
+.B Data Dictionary
+Overview of all attributes across entities.
+.TP
+.B MLD View
+Logical Data Model with auto-generated table/column tree view.
+Column names can be renamed by right-clicking or double-clicking.
+.TP
+.B SQL Generation
+PostgreSQL CREATE TABLE statements derived from the MLD.
+.TP
+.B Diagram Export
+Export diagrams to SVG, PNG, or PDF formats via File > Export Diagram.
+.TP
+.B Diagram Colours
+Customisable colours for entities, associations, and links via
+Options > Diagram Colours.
+.SH FILE FORMAT
+Projects are stored as JSON files with the
+.B .merisio
+extension (format version 2.1). A project file contains metadata, MCD
+definitions (entities, associations, links), MLD column overrides, and
+colour settings.
+.SH KEYBOARD SHORTCUTS
+.TS
+l l.
+Ctrl+N	New Project
+Ctrl+O	Open Project
+Ctrl+S	Save Project
+Ctrl+1	Dictionary Tab
+Ctrl+2	MCD Tab
+Ctrl+3	MLD Tab
+Ctrl+4	SQL Tab
+Delete	Delete Selected
+Ctrl+Scroll	Zoom In/Out
+Ctrl++	Zoom In
+Ctrl+-	Zoom Out
+Ctrl+0	Fit to View
+Ctrl+Shift+0	Reset Zoom (100%)
+.TE
+.SH EXIT STATUS
+.TP
+.B 0
+Normal exit.
+.SH SEE ALSO
+.BR merisio-cli (1)
+.SH AUTHOR
+Achraf Soltani <achraf.soltani@pm.me>
+.SH LICENSE
+GNU General Public License v2.
