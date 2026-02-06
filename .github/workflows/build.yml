@@ -8,7 +8,7 @@ on:
     branches: [main]
 
 env:
-  APP_VERSION: "1.3.0"
+  APP_VERSION: "1.3.1"
 
 jobs:
   build-linux:
@@ -38,6 +38,7 @@ jobs:
           cp README.md Merisio-linux-x64/
           cp merisio.desktop Merisio-linux-x64/
           cp resources/icons/app_icon.png Merisio-linux-x64/
+          cp -r man Merisio-linux-x64/
           tar -czvf Merisio-linux-x64.tar.gz Merisio-linux-x64/
 
       - name: Create .deb package
@@ -46,6 +47,7 @@ jobs:
           mkdir -p merisio-deb/usr/bin
           mkdir -p merisio-deb/usr/share/applications
           mkdir -p merisio-deb/usr/share/icons/hicolor/256x256/apps
+          mkdir -p merisio-deb/usr/share/man/man1
 
           cat > merisio-deb/DEBIAN/control << EOF
           Package: merisio
@@ -74,6 +76,9 @@ jobs:
           chmod 755 merisio-deb/usr/bin/merisio-cli
 
           cp resources/icons/app_icon.png merisio-deb/usr/share/icons/hicolor/256x256/apps/merisio.png
+
+          cp man/merisio.1 merisio-deb/usr/share/man/man1/merisio.1
+          cp man/merisio-cli.1 merisio-deb/usr/share/man/man1/merisio-cli.1
 
           cat > merisio-deb/usr/share/applications/merisio.desktop << EOF
           [Desktop Entry]
